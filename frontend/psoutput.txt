@@ -1,0 +1,3 @@
+      PID    PPID    PGID     WINPID   TTY         UID    STIME COMMAND
+     1201       1    1201      18152  ?         197609 09:36:57 /usr/bin/bash
+     1203    1201    1201       2524  ?         197609 09:36:57 /usr/bin/ps

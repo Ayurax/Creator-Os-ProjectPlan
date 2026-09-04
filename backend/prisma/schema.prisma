@@ -1,0 +1,265 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  passwordHash  String
+  role          String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  creator           Creator?           @relation("CreatorUser")
+  brand             Brand?             @relation("BrandUser")
+  freelancer        Freelancer?        @relation("FreelancerUser")
+  talentManager     TalentManager?     @relation("TalentManagerUser")
+  sentMessages      Message[]          @relation("SentMessages")
+  receivedMessages  Message[]          @relation("ReceivedMessages")
+  notifications     Notification[]     @relation("UserNotifications")
+  aiRecommendations AIRecommendation[] @relation("UserAIRecommendations")
+}
+
+model Creator {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @unique
+  user           User     @relation("CreatorUser", fields: [userId], references: [id])
+  bio            String?
+  niche          String?
+  followers      Int?
+  engagementRate Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Relations
+  portfolio             Portfolio[]            @relation("CreatorPortfolio")
+  collaborationRequests CollaborationRequest[] @relation("CreatorCollaborationRequests")
+  contracts             Contract[]             @relation("CreatorContracts")
+  reviews               Review[]               @relation("CreatorReviews")
+  talentManager         TalentManager?         @relation("TalentManagerManagedCreators", fields: [talentManagerId], references: [id])
+  talentManagerId       Int?
+}
+
+model Brand {
+  id          Int      @id @default(autoincrement())
+  userId      Int      @unique
+  user        User     @relation("BrandUser", fields: [userId], references: [id])
+  companyName String
+  industry    String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  campaigns      Campaign[]             @relation("BrandCampaigns")
+  collaborations CollaborationRequest[] @relation("BrandCollaborationRequests")
+  contracts      Contract[]             @relation("BrandContracts")
+}
+
+model Freelancer {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  user         User     @relation("FreelancerUser", fields: [userId], references: [id])
+  skills       String?
+  hourlyRate   Float?
+  availability String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  tasks Task[] @relation("FreelancerTasks")
+}
+
+model TalentManager {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @unique
+  user      User     @relation("TalentManagerUser", fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  managedCreators  Creator[]              @relation("TalentManagerManagedCreators")
+  managedCampaigns Campaign[]             @relation("TalentManagerManagedCampaigns")
+  collaborations   CollaborationRequest[] @relation("TalentManagerCollaborations")
+  contracts        Contract[]             @relation("TalentManagerContracts")
+}
+
+model Campaign {
+  id              Int         @id @default(autoincrement())
+  brandId         Int
+  brand           Brand       @relation("BrandCampaigns", fields: [brandId], references: [id])
+  name            String
+  description     String?
+  startDate       DateTime?
+  endDate         DateTime?
+  budget          Float?
+  status          String   @default("DRAFT")
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  talentManager   TalentManager? @relation("TalentManagerManagedCampaigns", fields: [talentManagerId], references: [id])
+  talentManagerId Int?
+
+  // Relations
+  collaborationRequests CollaborationRequest[] @relation("CampaignCollaborationRequests")
+  contracts             Contract[]             @relation("CampaignContracts")
+  contentCalendars      ContentCalendar[]      @relation("CampaignContentCalendars")
+  analytics             Analytics?             @relation("CampaignAnalytics")
+  aiRecommendations     AIRecommendation[]     @relation("CampaignAIRecommendations")
+  reviews               Review[]               @relation("CampaignReviews")
+}
+
+model CollaborationRequest {
+  id              Int                     @id @default(autoincrement())
+  campaignId      Int
+  campaign        Campaign                @relation("CampaignCollaborationRequests", fields: [campaignId], references: [id])
+  brandId         Int?
+  brand           Brand?                  @relation("BrandCollaborationRequests", fields: [brandId], references: [id])
+  creatorId       Int
+  creator         Creator                 @relation("CreatorCollaborationRequests", fields: [creatorId], references: [id])
+  talentManagerId Int?
+  talentManager   TalentManager?           @relation("TalentManagerCollaborations", fields: [talentManagerId], references: [id])
+  status          String   @default("PENDING")
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  // Relations
+  contract Contract? @relation("CollaborationRequestContract")
+}
+
+model Contract {
+  id                     Int               @id @default(autoincrement())
+  collaborationRequestId Int               @unique
+  collaborationRequest   CollaborationRequest @relation("CollaborationRequestContract", fields: [collaborationRequestId], references: [id])
+  brandId                Int
+  brand                  Brand             @relation("BrandContracts", fields: [brandId], references: [id])
+  creatorId              Int
+  creator                Creator           @relation("CreatorContracts", fields: [creatorId], references: [id])
+  talentManagerId        Int?
+  talentManager          TalentManager?     @relation("TalentManagerContracts", fields: [talentManagerId], references: [id])
+  terms                  String?
+  startDate              DateTime?
+  endDate                DateTime?
+  status                 String     @default("DRAFT")
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  campaignId             Int?
+  campaign               Campaign?          @relation("CampaignContracts", fields: [campaignId], references: [id])
+
+  // Relations
+  tasks      Task[]    @relation("ContractTasks")
+  payments   Payment[] @relation("ContractPayments")
+}
+
+model Task {
+  id          Int      @id @default(autoincrement())
+  contractId  Int
+  contract    Contract @relation("ContractTasks", fields: [contractId], references: [id])
+  description String
+  assigneeId  Int?
+  assignee    Freelancer? @relation("FreelancerTasks", fields: [assigneeId], references: [id])
+  dueDate     DateTime?
+  status      String   @default("TODO")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  deliverables Deliverable[] @relation("TaskDeliverables")
+}
+
+model Deliverable {
+  id          Int      @id @default(autoincrement())
+  taskId      Int
+  task        Task     @relation("TaskDeliverables", fields: [taskId], references: [id])
+  description String?
+  mediaUrl    String?
+  submittedAt DateTime @default(now())
+}
+
+model Payment {
+  id         Int         @id @default(autoincrement())
+  contractId Int
+  contract   Contract    @relation("ContractPayments", fields: [contractId], references: [id])
+  amount     Float
+  status     String   @default("PENDING")
+  paidAt     DateTime?
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+}
+
+model Review {
+  id         Int      @id @default(autoincrement())
+  campaignId Int
+  campaign   Campaign @relation("CampaignReviews", fields: [campaignId], references: [id])
+  creatorId  Int
+  creator    Creator  @relation("CreatorReviews", fields: [creatorId], references: [id])
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+}
+
+model Portfolio {
+  id          Int      @id @default(autoincrement())
+  creatorId   Int
+  creator     Creator  @relation("CreatorPortfolio", fields: [creatorId], references: [id])
+  title       String
+  description String?
+  mediaUrl    String?
+  createdAt   DateTime @default(now())
+}
+
+model ContentCalendar {
+  id          Int      @id @default(autoincrement())
+  campaignId  Int
+  campaign    Campaign @relation("CampaignContentCalendars", fields: [campaignId], references: [id])
+  platform    String
+  content     String
+  scheduledAt DateTime?
+  createdAt   DateTime @default(now())
+}
+
+model Analytics {
+  id          Int      @id @default(autoincrement())
+  campaignId  Int      @unique
+  campaign    Campaign @relation("CampaignAnalytics", fields: [campaignId], references: [id])
+  views       Int?
+  clicks      Int?
+  engagements Int?
+  metrics     String?
+  createdAt   DateTime @default(now())
+}
+
+model Message {
+  id         Int      @id @default(autoincrement())
+  senderId   Int
+  sender     User     @relation("SentMessages", fields: [senderId], references: [id])
+  receiverId Int
+  receiver   User     @relation("ReceivedMessages", fields: [receiverId], references: [id])
+  content    String
+  createdAt  DateTime @default(now())
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation("UserNotifications", fields: [userId], references: [id])
+  type      String
+  content   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model AIRecommendation {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  user       User?    @relation("UserAIRecommendations", fields: [userId], references: [id])
+  campaignId Int?
+  campaign   Campaign? @relation("CampaignAIRecommendations", fields: [campaignId], references: [id])
+  type       String
+  result     String
+  createdAt  DateTime @default(now())
+}
