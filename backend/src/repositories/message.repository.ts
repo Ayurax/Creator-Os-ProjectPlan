@@ -7,7 +7,10 @@ export class MessageRepository {
   listForUser(userId: number) {
     return prisma.message.findMany({
       where: { OR: [{ senderId: userId }, { receiverId: userId }] },
-      include: { sender: true, receiver: true },
+      include: {
+        sender: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } },
+        receiver: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

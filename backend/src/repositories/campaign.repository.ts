@@ -15,7 +15,12 @@ export class CampaignRepository {
   findById(id: number) {
     return prisma.campaign.findUnique({
       where: { id },
-      include: { brand: { include: { user: true } }, collaborationRequests: true },
+      include: {
+        brand: {
+          include: { user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } } },
+        },
+        collaborationRequests: true,
+      },
     });
   }
   listByBrand(brandId: number) {

@@ -1,18 +1,36 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import type { Contract } from '../types/api';
-import { Alert, AppShell, DataTable, EmptyState, LoadingScreen, PageHeader, Section, StatusBadge } from '../components/ui';
+import { Alert, AppShell, EmptyState, LoadingScreen, PageHeader, StatusBadge } from '../components/ui';
+import { useAssistantContext } from '../hooks/useAssistantContext';
 
 export default function Contracts() {
   const [contracts, setContracts] = useState<Contract[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [collabId, setCollabId] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [ready, setReady] = useState(false);
+  const { setContext } = useAssistantContext();
 
   useEffect(() => {
     loadContracts();
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      const t = setTimeout(() => setReady(true), 60);
+      return () => clearTimeout(t);
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    setContext({
+      page: 'Contracts',
+      route: '/contracts',
+      data: {
+        totalContracts: contracts.length,
+      },
+    });
+  }, [contracts, setContext]);
 
   const loadContracts = async () => {
     try {
@@ -25,85 +43,56 @@ export default function Contracts() {
     }
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await api.post('/contracts', { collaborationRequestId: collabId });
-      setCollabId('');
-      loadContracts();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed');
-    }
-  };
-
-  const handleStatus = async (id: string, status: string) => {
-    setError('');
-    try {
-      await api.patch(`/contracts/${id}/status`, { status });
-      loadContracts();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed');
-    }
-  };
-
-  const filtered = statusFilter ? contracts.filter((c) => c.status === statusFilter) : contracts;
-
   if (loading) return <LoadingScreen label="Loading contracts..." />;
 
   return (
     <AppShell eyebrow="Contracts">
       <PageHeader
         title="Contracts"
-        description="Create contracts from collaboration requests and move agreements from pending to active to complete."
+        description="Manage agreements, review terms, and track contract status."
       />
-        {error && <Alert>{error}</Alert>}
-        <Section title="Create contract" description="Contract setup">
-        <form onSubmit={handleCreate} className="form-grid two">
-          <div className="form-field">
-            <label htmlFor="collab-id">Collaboration Request ID</label>
-            <input id="collab-id" value={collabId} onChange={(e) => setCollabId(e.target.value)} className="input" required />
+      {error && <Alert>{error}</Alert>}
+
+      <div style={{ opacity: ready ? 1 : 0, transform: ready ? 'translateY(0)' : 'translateY(10px)', transition: 'opacity 500ms ease, transform 500ms ease' }}>
+        {contracts.length === 0 ? (
+          <div className="panel">
+            <EmptyState title="No contracts" description="Contracts will appear here once created." />
           </div>
-          <div className="form-actions">
-            <button type="submit" className="button">Create Contract</button>
+        ) : (
+          <div style={{ display: 'grid', gap: '1rem' }}>
+            {contracts.map((c, idx) => (
+              <div
+                key={c.id}
+                className="panel"
+                style={{
+                  opacity: ready ? 1 : 0,
+                  transform: ready ? 'translateY(0)' : 'translateY(8px)',
+                  transition: `opacity 400ms ease ${idx * 50 + 100}ms, transform 400ms ease ${idx * 50 + 100}ms`,
+                }}
+              >
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'baseline', marginBottom: '0.75rem' }}>
+                  <div style={{ fontFamily: 'var(--font-family-serif)', fontSize: '1.15rem', fontWeight: 400, letterSpacing: '-0.01em' }}>
+                    Contract {c.id}
+                  </div>
+                  <StatusBadge status={c.status} />
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem', fontSize: '0.85rem', color: 'var(--color-ink-secondary)' }}>
+                  <div>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--color-ink-tertiary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.15rem' }}>Collaboration</span>
+                    <span className="mono">{c.collaborationRequestId}</span>
+                  </div>
+                  {c.terms && (
+                    <div style={{ flex: '1 1 200px' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--color-ink-tertiary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginBottom: '0.15rem' }}>Terms</span>
+                      <span>{c.terms}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
-        </form>
-        </Section>
-        <div className="toolbar">
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="input">
-            <option value="">All Statuses</option>
-            <option value="PENDING">Pending</option>
-            <option value="ACTIVE">Active</option>
-            <option value="COMPLETED">Completed</option>
-          </select>
-        </div>
-        <DataTable>
-          <table>
-            <thead>
-              <tr>
-                <th className="text-left p-4">ID</th>
-                <th className="text-left p-4">Collab Request</th>
-                <th className="text-left p-4">Status</th>
-                <th className="text-left p-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((c) => (
-                <tr key={c.id} className="border-t">
-                  <td className="p-4 id-cell">{c.id}</td>
-                  <td className="p-4 id-cell">{c.collaborationRequestId}</td>
-                  <td className="p-4"><StatusBadge status={c.status} /></td>
-                  <td className="p-4 flex gap-2">
-                    <button type="button" onClick={() => handleStatus(c.id, 'ACTIVE')} className="button button-success">Activate</button>
-                    <button type="button" onClick={() => handleStatus(c.id, 'COMPLETED')} className="button">Complete</button>
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={4}><EmptyState title="No contracts found" description="Create a contract from an accepted collaboration request." /></td></tr>
-              )}
-            </tbody>
-          </table>
-        </DataTable>
+        )}
+      </div>
     </AppShell>
   );
 }

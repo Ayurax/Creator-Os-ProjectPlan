@@ -5,7 +5,13 @@ export class CreatorRepository {
     return prisma.creator.findUnique({ where: { userId } });
   }
   findById(id: number) {
-    return prisma.creator.findUnique({ where: { id }, include: { user: true, portfolio: true } });
+    return prisma.creator.findUnique({
+      where: { id },
+      include: {
+        user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } },
+        portfolio: true,
+      },
+    });
   }
   create(data: { userId: number; bio?: string; niche?: string; followers?: number; engagementRate?: number }) {
     return prisma.creator.create({ data });
@@ -19,7 +25,10 @@ export class CreatorRepository {
         niche: filters.niche,
         followers: filters.minFollowers ? { gte: filters.minFollowers } : undefined,
       },
-      include: { user: true, portfolio: true },
+      include: {
+        user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } },
+        portfolio: true,
+      },
     });
   }
 }

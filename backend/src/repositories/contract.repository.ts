@@ -19,8 +19,12 @@ export class ContractRepository {
       where: { id },
       include: {
         collaborationRequest: true,
-        brand: { include: { user: true } },
-        creator: { include: { user: true } },
+        brand: {
+          include: { user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } } },
+        },
+        creator: {
+          include: { user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } } },
+        },
         talentManager: true,
         campaign: true,
         tasks: true,

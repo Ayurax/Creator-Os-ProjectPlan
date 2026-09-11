@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Campaign } from '../types/api';
-import { Alert, AppShell, DataTable, EmptyState, LoadingScreen, PageHeader, Section, StatusBadge } from '../components/ui';
+import { Alert, AppShell, EmptyState, LoadingScreen, PageHeader, Section, StatusBadge } from '../components/ui';
+import { useAssistantContext } from '../hooks/useAssistantContext';
 
 export default function Campaigns() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -12,10 +13,31 @@ export default function Campaigns() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [budget, setBudget] = useState('');
+  const [ready, setReady] = useState(false);
+  const { setContext } = useAssistantContext();
 
   useEffect(() => {
     loadCampaigns();
   }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      const t = setTimeout(() => setReady(true), 60);
+      return () => clearTimeout(t);
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    setContext({
+      page: 'Campaigns',
+      route: '/campaigns',
+      data: {
+        totalCampaigns: campaigns.length,
+        activeCampaigns: campaigns.filter((c) => c.status === 'ACTIVE').length,
+        draftCampaigns: campaigns.filter((c) => c.status === 'DRAFT').length,
+      },
+    });
+  }, [campaigns, setContext]);
 
   const loadCampaigns = async () => {
     try {
@@ -31,11 +53,7 @@ export default function Campaigns() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/campaigns', {
-        name,
-        description: description || undefined,
-        budget: budget ? Number(budget) : undefined,
-      });
+      await api.post('/campaigns', { name, description, budget: budget ? Number(budget) : undefined });
       setName('');
       setDescription('');
       setBudget('');
@@ -52,62 +70,68 @@ export default function Campaigns() {
     <AppShell eyebrow="Campaigns">
       <PageHeader
         title="Campaigns"
-        description="Create campaign briefs, manage budgets, and track campaign status without leaving the workspace."
+        description="Manage brand campaigns, set budgets, and track collaboration progress."
         action={
-          <button type="button" onClick={() => setShowForm(!showForm)} className={showForm ? 'button button-secondary' : 'button'}>
-            {showForm ? 'Cancel' : 'New Campaign'}
+          <button type="button" onClick={() => setShowForm((v) => !v)} className="button">
+            {showForm ? 'Close form' : 'New Campaign'}
           </button>
         }
       />
       {error && <Alert>{error}</Alert>}
-        {showForm && (
-          <Section title="New campaign" description="Campaign setup">
+
+      {showForm && (
+        <Section title="New campaign" description="Start a fresh collaboration brief">
           <form onSubmit={handleCreate} className="form-grid">
-            <div className="form-field">
-              <label htmlFor="campaign-name">Name</label>
-              <input id="campaign-name" value={name} onChange={(e) => setName(e.target.value)} className="input" required />
+            <div className="form-field full">
+              <label htmlFor="name">Campaign name</label>
+              <input id="name" value={name} onChange={(e) => setName(e.target.value)} className="input" required />
             </div>
             <div className="form-field full">
-              <label htmlFor="campaign-description">Description</label>
-              <textarea id="campaign-description" value={description} onChange={(e) => setDescription(e.target.value)} className="input" />
+              <label htmlFor="description">Description</label>
+              <textarea id="description" value={description} onChange={(e) => setDescription(e.target.value)} className="input" rows={3} />
             </div>
             <div className="form-field">
-              <label htmlFor="campaign-budget">Budget</label>
-              <input id="campaign-budget" type="number" value={budget} onChange={(e) => setBudget(e.target.value)} className="input" />
+              <label htmlFor="budget">Budget</label>
+              <input id="budget" type="number" value={budget} onChange={(e) => setBudget(e.target.value)} className="input" />
             </div>
             <div className="form-actions full">
-              <button type="submit" className="button">Create Campaign</button>
+              <button type="submit" className="button">Create campaign</button>
             </div>
           </form>
-          </Section>
+        </Section>
+      )}
+
+      <div style={{ opacity: ready ? 1 : 0, transform: ready ? 'translateY(0)' : 'translateY(10px)', transition: 'opacity 500ms ease, transform 500ms ease' }}>
+        {campaigns.length === 0 ? (
+          <div className="panel">
+            <EmptyState title="No campaigns yet" description="Create your first campaign to start inviting creators." />
+          </div>
+        ) : (
+          <div className="list-rows" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-line)', borderRadius: 'var(--radius)' }}>
+            {campaigns.map((c, idx) => (
+              <Link
+                key={c.id}
+                to={`/campaigns/${c.id}`}
+                className="list-row"
+                style={{
+                  opacity: ready ? 1 : 0,
+                  transform: ready ? 'translateY(0)' : 'translateY(6px)',
+                  transition: `opacity 400ms ease ${idx * 40 + 100}ms, transform 400ms ease ${idx * 40 + 100}ms`,
+                }}
+              >
+                <div className="list-row-main">
+                  <strong>{c.name}</strong>
+                  <p>{c.description || 'No description'}</p>
+                </div>
+                <div className="list-row-meta">
+                  <StatusBadge status={c.status} />
+                  {c.budget && <span className="mono">${typeof c.budget === 'number' ? c.budget.toLocaleString() : c.budget}</span>}
+                </div>
+              </Link>
+            ))}
+          </div>
         )}
-        <DataTable>
-          <table>
-            <thead>
-              <tr>
-                <th className="text-left p-4">Name</th>
-                <th className="text-left p-4">Budget</th>
-                <th className="text-left p-4">Status</th>
-                <th className="text-left p-4">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {campaigns.map((c) => (
-                <tr key={c.id} className="border-t">
-                  <td className="p-4">{c.name}</td>
-                  <td className="p-4">{c.budget ? `$${c.budget}` : '-'}</td>
-                  <td className="p-4"><StatusBadge status={c.status} /></td>
-                  <td className="p-4">
-                    <Link to={`/campaigns/${c.id}`} className="button-link">View</Link>
-                  </td>
-                </tr>
-              ))}
-              {campaigns.length === 0 && (
-                <tr><td colSpan={4}><EmptyState title="No campaigns found" description="Create your first campaign to start inviting creators." /></td></tr>
-              )}
-            </tbody>
-          </table>
-        </DataTable>
+      </div>
     </AppShell>
   );
 }

@@ -14,5 +14,6 @@ router.post('/generate-email', requireRole('BRAND', 'TALENT_MANAGER'), aiControl
 router.post('/analytics-summary', requireRole('BRAND', 'CREATOR', 'TALENT_MANAGER'), aiController.summarizeAnalytics);
 router.post('/content-plan', aiController.generateContentPlan);
 router.post('/campaign-summary', requireRole('BRAND', 'CREATOR', 'TALENT_MANAGER'), aiController.summarizeCampaign);
+router.post('/chat', aiController.chat);
 
 export default router;

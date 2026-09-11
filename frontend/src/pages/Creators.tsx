@@ -3,21 +3,54 @@ import { Link } from 'react-router-dom';
 import { api } from '../api/client';
 import type { Creator } from '../types/api';
 import { Alert, AppShell, EmptyState, LoadingScreen, PageHeader } from '../components/ui';
+import { useAssistantContext } from '../hooks/useAssistantContext';
 
 export default function Creators() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [query, setQuery] = useState('');
+  const [search, setSearch] = useState('');
+  const [ready, setReady] = useState(false);
+  const { setContext } = useAssistantContext();
 
   useEffect(() => {
     loadCreators();
   }, []);
 
+  useEffect(() => {
+    if (!loading) {
+      const t = setTimeout(() => setReady(true), 60);
+      return () => clearTimeout(t);
+    }
+  }, [loading]);
+
+  useEffect(() => {
+    setContext({
+      page: 'Creators',
+      route: '/creators',
+      data: {
+        totalCreators: creators.length,
+      },
+    });
+  }, [creators, setContext]);
+
   const loadCreators = async () => {
     try {
-      const res = await api.get<{ success: boolean; data: Creator[] }>('/creators');
-      if (res.success && res.data) setCreators(res.data);
+      const res = await api.get<{ success: boolean; data: any[] }>('/creators');
+      if (res.success && res.data) {
+        // Transform API response to match Creator interface
+        const transformed = res.data.map((c: any) => ({
+          id: String(c.id),
+          email: c.user?.email || '',
+          name: c.user?.email ? c.user.email.split('@')[0] : '',
+          bio: c.bio,
+          niche: c.niche,
+          followers: c.followers,
+          engagementRate: c.engagementRate,
+          platforms: [], // API doesn't provide platforms
+        }));
+        setCreators(transformed);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -26,41 +59,86 @@ export default function Creators() {
   };
 
   const filtered = creators.filter((c) => {
-    if (!query) return true;
-    const q = query.toLowerCase();
-    return (c.name || '').toLowerCase().includes(q) || (c.niche || '').toLowerCase().includes(q) || c.email.toLowerCase().includes(q);
+    const term = search.toLowerCase();
+    return (
+      c.name?.toLowerCase().includes(term) ||
+      c.email?.toLowerCase().includes(term) ||
+      c.niche?.toLowerCase().includes(term)
+    );
   });
 
   if (loading) return <LoadingScreen label="Loading creators..." />;
 
   return (
-    <AppShell eyebrow="Talent network">
+    <AppShell eyebrow="Creators">
       <PageHeader
         title="Creators"
-        description="Search creator profiles by name, email, or niche and inspect portfolio-ready talent details."
+        description="Discover and review creators for collaboration opportunities."
       />
-        {error && <Alert>{error}</Alert>}
-        <div className="toolbar">
+      {error && <Alert>{error}</Alert>}
+
+      <div className="toolbar" style={{ opacity: ready ? 1 : 0, transition: 'opacity 400ms ease' }}>
         <input
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search creators..."
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           className="input"
+          placeholder="Search creators..."
+          style={{ maxWidth: '22rem' }}
         />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {filtered.map((c) => (
-            <Link key={c.id} to={`/creators/${c.id}`} className="feature-card">
-              <h3>{c.name || c.email}</h3>
-              <p>{c.niche || 'No niche listed'}</p>
-              <div className="meta-row">
-                {c.followers && <span className="meta-pill">{c.followers} followers</span>}
-                {c.engagementRate && <span className="meta-pill">{c.engagementRate}% engagement</span>}
-              </div>
-            </Link>
-          ))}
-          {filtered.length === 0 && <EmptyState title="No creators found" description="Try a different name, email, or niche." />}
-        </div>
+      </div>
+
+      <div style={{ opacity: ready ? 1 : 0, transform: ready ? 'translateY(0)' : 'translateY(10px)', transition: 'opacity 500ms ease 100ms, transform 500ms ease 100ms' }}>
+        {filtered.length === 0 ? (
+          <div className="panel">
+            <EmptyState title="No creators found" description="Try adjusting your search or check back later." />
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+            {filtered.map((c, idx) => (
+              <Link
+                key={c.id}
+                to={`/creators/${c.id}`}
+                className="panel"
+                style={{
+                  opacity: ready ? 1 : 0,
+                  transform: ready ? 'translateY(0)' : 'translateY(8px)',
+                  transition: `opacity 400ms ease ${idx * 40 + 100}ms, transform 400ms ease ${idx * 40 + 100}ms`,
+                  textDecoration: 'none',
+                  color: 'inherit',
+                  display: 'block',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem' }}>
+                  <div className="avatar" style={{ width: '2.5rem', height: '2.5rem', fontSize: '0.85rem' }}>
+                    {(c.name || c.email).slice(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <div style={{ fontFamily: 'var(--font-family-serif)', fontSize: '1.05rem', fontWeight: 400, letterSpacing: '-0.01em' }}>
+                      {c.name || 'Creator'}
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--color-ink-tertiary)' }}>{c.email}</div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  {c.niche && <span className="status-badge status-draft">{c.niche}</span>}
+                  {c.platforms && c.platforms.length > 0 && <span className="status-badge status-draft">{c.platforms[0]}</span>}
+                </div>
+                <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.75rem', paddingTop: '0.75rem', borderTop: '1px solid var(--color-line)' }}>
+                  <div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--color-ink-tertiary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Followers</div>
+                    <div style={{ fontFamily: 'var(--font-family-mono)', fontSize: '0.85rem', fontWeight: 600 }}>{(c.followers ?? 0).toLocaleString()}</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: '0.68rem', color: 'var(--color-ink-tertiary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>Engagement</div>
+                    <div style={{ fontFamily: 'var(--font-family-mono)', fontSize: '0.85rem', fontWeight: 600 }}>{c.engagementRate ?? 0}%</div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
     </AppShell>
   );
 }

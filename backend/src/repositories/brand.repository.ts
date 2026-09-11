@@ -5,7 +5,10 @@ export class BrandRepository {
     return prisma.brand.findUnique({ where: { userId } });
   }
   findById(id: number) {
-    return prisma.brand.findUnique({ where: { id }, include: { user: true } });
+    return prisma.brand.findUnique({
+      where: { id },
+      include: { user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } } },
+    });
   }
   create(data: { userId: number; companyName: string; industry?: string; description?: string }) {
     return prisma.brand.create({ data });

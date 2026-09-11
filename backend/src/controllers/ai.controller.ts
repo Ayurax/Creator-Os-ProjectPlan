@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { aiService } from '../services/ai.service';
+import type { AssistantContext } from '../types';
 
 export const aiController = {
   async recommendCreators(req: AuthRequest, res: Response, next: NextFunction) {
@@ -55,6 +56,19 @@ export const aiController = {
     try {
       const data = await aiService.generateContentPlan(req.body);
       res.json({ success: true, data });
+    } catch (e) {
+      next(e);
+    }
+  },
+  async chat(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const { message, conversation, context } = req.body;
+      const data = await aiService.chat(
+        { message, conversation },
+        req.user!,
+        context as AssistantContext | undefined,
+      );
+      res.json(data);
     } catch (e) {
       next(e);
     }

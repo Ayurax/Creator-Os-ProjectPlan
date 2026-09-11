@@ -13,13 +13,30 @@ export class CollaborationRequestRepository {
   findById(id: number) {
     return prisma.collaborationRequest.findUnique({
       where: { id },
-      include: { campaign: true, brand: true, creator: { include: { user: true } }, talentManager: true, contract: true },
+      include: {
+        campaign: true,
+        brand: true,
+        creator: {
+          include: {
+            user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } },
+          },
+        },
+        talentManager: true,
+        contract: true,
+      },
     });
   }
   listForBrand(brandId: number) {
     return prisma.collaborationRequest.findMany({
       where: { brandId },
-      include: { campaign: true, creator: { include: { user: true } } },
+      include: {
+        campaign: true,
+        creator: {
+          include: {
+            user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }
@@ -33,7 +50,14 @@ export class CollaborationRequestRepository {
   listForTalentManager(talentManagerId: number) {
     return prisma.collaborationRequest.findMany({
       where: { talentManagerId },
-      include: { campaign: true, creator: { include: { user: true } } },
+      include: {
+        campaign: true,
+        creator: {
+          include: {
+            user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } },
+          },
+        },
+      },
       orderBy: { createdAt: 'desc' },
     });
   }

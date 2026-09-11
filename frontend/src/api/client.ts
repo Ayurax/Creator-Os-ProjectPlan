@@ -50,4 +50,15 @@ export const api = {
     request<T>(endpoint, {
       method: 'DELETE',
     }),
+  chat: <T>(
+    body: {
+      message: string;
+      conversation?: { role: 'user' | 'assistant'; content: string }[];
+      context?: import('../contexts/AssistantContext').AssistantContext;
+    },
+  ) =>
+    request<T>('/ai/chat', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
 };

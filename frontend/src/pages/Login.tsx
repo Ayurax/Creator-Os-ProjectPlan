@@ -23,8 +23,46 @@ export default function Login() {
     }
   };
 
+  const leftPanel = (
+    <div style={{ maxWidth: '28rem' }}>
+      <div className="brand-lockup" style={{ justifyContent: 'flex-start', marginBottom: '2rem' }}>
+        <span className="brand-mark" style={{ 
+          width: '3.5rem', 
+          height: '3.5rem', 
+          fontSize: '1.5rem',
+          background: 'var(--color-accent)',
+        }}>CO</span>
+      </div>
+      <h3 style={{ 
+        fontFamily: 'var(--font-family-serif)', 
+        fontSize: 'clamp(1.5rem, 3vw, 2.25rem)', 
+        fontWeight: 400, 
+        lineHeight: 1.2, 
+        color: 'var(--color-ink)',
+        marginBottom: '1.5rem',
+        letterSpacing: '-0.02em',
+      }}>
+        Where brands and creators<br />build together
+      </h3>
+      <p style={{ 
+        fontSize: '1rem', 
+        lineHeight: 1.7, 
+        color: 'var(--color-ink-secondary)',
+        maxWidth: '24rem',
+      }}>
+        CreatorOS is the operating system for creator-brand collaboration. 
+        Streamline campaigns, manage contracts, track deliverables, and grow 
+        partnerships — all in one workspace designed for the creator economy.
+      </p>
+    </div>
+  );
+
   return (
-    <AuthShell title="Log in" subtitle="Continue your workspace">
+    <AuthShell 
+      title="Log in" 
+      subtitle="Welcome back"
+      leftPanel={leftPanel}
+    >
       <form onSubmit={handleSubmit} className="auth-form">
         {error && <Alert>{error}</Alert>}
         <div className="form-field">

@@ -35,30 +35,29 @@ export function formatRole(role?: string) {
     .join(' ');
 }
 
-const breadcrumbMap: Record<string, string> = {
-  '/dashboard': 'Dashboard',
-  '/dashboard/brand': 'Brand Dashboard',
-  '/dashboard/creator': 'Creator Dashboard',
-  '/dashboard/freelancer': 'Freelancer Dashboard',
-  '/dashboard/manager': 'Manager Dashboard',
-  '/campaigns': 'Campaigns',
-  '/creators': 'Creators',
-  '/collaborations': 'Collaborations',
-  '/contracts': 'Contracts',
-  '/tasks': 'Tasks',
-  '/payments': 'Payments',
-  '/reviews': 'Reviews',
-  '/messages': 'Messages',
-  '/ai': 'AI Tools',
-  '/portfolio': 'Portfolio',
-};
-
 export function Breadcrumbs() {
   const location = useLocation();
   const segments = location.pathname.split('/').filter(Boolean);
-  const crumbs = segments.map((seg, i) => {
+  const crumbs = segments.map((_seg, i) => {
     const path = '/' + segments.slice(0, i + 1).join('/');
-    const label = breadcrumbMap[path] || decodeURIComponent(seg);
+    const label = path
+      .replace(/^\/dashboard/, 'Dashboard')
+      .replace(/^\/campaigns/, 'Campaigns')
+      .replace(/^\/creators/, 'Creators')
+      .replace(/^\/collaborations/, 'Collaborations')
+      .replace(/^\/contracts/, 'Contracts')
+      .replace(/^\/tasks/, 'Tasks')
+      .replace(/^\/payments/, 'Payments')
+      .replace(/^\/reviews/, 'Reviews')
+      .replace(/^\/messages/, 'Messages')
+      .replace(/^\/ai/, 'AI Tools')
+      .replace(/^\/portfolio/, 'Portfolio')
+      .replace(/^\/login$/, 'Login')
+      .replace(/^\/register$/, 'Register')
+      .replace(/^\/dashboard\/brand$/, 'Brand')
+      .replace(/^\/dashboard\/creator$/, 'Creator')
+      .replace(/^\/dashboard\/freelancer$/, 'Freelancer')
+      .replace(/^\/dashboard\/manager$/, 'Manager');
     return { path, label, active: i === segments.length - 1 };
   });
 
@@ -94,10 +93,10 @@ export function AppShell({
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link to={dashboardPath} className="brand-lockup" aria-label="CreatorOS AI dashboard">
+        <Link to={dashboardPath} className="brand-lockup" aria-label="CreatorOS dashboard">
           <span className="brand-mark">CO</span>
           <span>
-            <span className="brand-name">CreatorOS AI</span>
+            <span className="brand-name">CreatorOS</span>
             <span className="brand-caption">{formatRole(user?.role)}</span>
           </span>
         </Link>
@@ -142,42 +141,79 @@ export function AuthShell({
   title,
   subtitle,
   children,
+  leftPanel,
 }: {
   title: string;
   subtitle: string;
   children: React.ReactNode;
+  leftPanel?: React.ReactNode;
 }) {
   return (
-    <div className="auth-shell">
-      <section className="auth-panel">
-        <div className="auth-brand">
-          <span className="brand-mark">CO</span>
-          <span>
-            <span className="brand-name">CreatorOS AI</span>
-            <span className="brand-caption">Creator operations workspace</span>
-          </span>
-        </div>
-        <div className="auth-copy">
-          <p className="eyebrow">Revenue, talent, and delivery in one place</p>
-          <h1>Run every creator partnership from first pitch to final payout.</h1>
-          <p>
-            Coordinate campaigns, contracts, tasks, payments, reviews, messages, and AI workflows with a calm operating system for modern teams.
-          </p>
-        </div>
-        <div className="auth-metrics">
-          <span>Campaign CRM</span>
-          <span>Talent pipeline</span>
-          <span>AI co-pilot</span>
-        </div>
-      </section>
-      <section className="auth-card">
-        <div className="section-heading compact">
-          <p>{subtitle}</p>
-          <h2>{title}</h2>
-        </div>
-        {children}
-      </section>
-    </div>
+    <>
+      {leftPanel && (
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            @media (max-width: 980px) {
+              .auth-shell {
+                grid-template-columns: 1fr;
+              }
+              .auth-panel {
+                display: none;
+              }
+              .auth-card {
+                margin: 0 auto;
+              }
+              .auth-card .section-heading {
+                text-align: center;
+              }
+            }
+          `
+        }} />
+      )}
+      <div className="auth-shell" style={{ 
+        gridTemplateColumns: leftPanel ? '1fr 1fr' : '1fr',
+      }}>
+        {leftPanel && (
+          <aside className="auth-panel" style={{ display: 'flex' }} aria-hidden="true">
+            <div className="auth-panel-content" style={{ 
+              width: '100%', 
+              height: '100%', 
+              display: 'flex', 
+              flexDirection: 'column',
+              justifyContent: 'center',
+              padding: 'clamp(2rem, 6vw, 4rem)',
+              background: 'var(--color-paper)',
+              borderRight: '1px solid var(--color-line)',
+              position: 'relative',
+            }}>
+              <div style={{ position: 'relative', zIndex: 1 }}>
+                {leftPanel}
+              </div>
+              <div className="collaboration-thread" style={{
+                position: 'absolute',
+                right: 0,
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '3rem',
+                height: '1px',
+                background: 'linear-gradient(90deg, transparent, var(--color-accent))',
+                opacity: 0.6,
+              }} aria-hidden="true" />
+            </div>
+          </aside>
+        )}
+        <section className="auth-card" style={{ 
+          alignSelf: 'center',
+          margin: leftPanel ? '0' : '0 auto',
+        }}>
+          <div className="section-heading compact" style={{ textAlign: leftPanel ? 'left' : 'center' }}>
+            <span className="eyebrow">{subtitle}</span>
+            <h2>{title}</h2>
+          </div>
+          {children}
+        </section>
+      </div>
+    </>
   );
 }
 
@@ -193,7 +229,7 @@ export function PageHeader({
   return (
     <div className="page-header">
       <div>
-        <p className="eyebrow">CreatorOS AI</p>
+        <span className="eyebrow">CreatorOS</span>
         <h1>{title}</h1>
         {description && <p>{description}</p>}
       </div>
@@ -249,17 +285,6 @@ export function LoadingScreen({ label = 'Loading workspace...' }: { label?: stri
   );
 }
 
-export function SkeletonCard() {
-  return (
-    <div className="panel" style={{ minHeight: '8rem' }}>
-      <div className="skeleton">
-        <div className="skeleton-line wide" />
-        <div className="skeleton-line narrow" />
-      </div>
-    </div>
-  );
-}
-
 export function Alert({ children }: { children: React.ReactNode }) {
   return <div className="alert-error" role="alert">{children}</div>;
 }
@@ -269,7 +294,7 @@ export function StatusBadge({ status }: { status?: string }) {
   return <span className={`status-badge status-${normalized}`}>{status || 'Unknown'}</span>;
 }
 
-export function StatCard({
+export function MetricRow({
   label,
   value,
   detail,
@@ -279,10 +304,10 @@ export function StatCard({
   detail?: string;
 }) {
   return (
-    <div className="stat-card">
-      <span>{label}</span>
-      <strong>{value}</strong>
-      {detail && <p>{detail}</p>}
+    <div className="metric-row">
+      <span className="metric-label">{label}</span>
+      <strong className="metric-value">{value}</strong>
+      {detail && <p className="metric-detail">{detail}</p>}
     </div>
   );
 }
@@ -295,3 +320,29 @@ export function DataTable({
   return <div className="table-wrap">{children}</div>;
 }
 
+export function ActionList({
+  title,
+  description,
+  primaryAction,
+  children,
+}: {
+  title?: string;
+  description?: string;
+  primaryAction?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="panel">
+      {(title || description || primaryAction) && (
+        <div className="action-list-header">
+          <div>
+            {description && <p>{description}</p>}
+            {title && <h2>{title}</h2>}
+          </div>
+          {primaryAction && <div className="action-list-primary">{primaryAction}</div>}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}

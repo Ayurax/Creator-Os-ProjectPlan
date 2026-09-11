@@ -20,7 +20,10 @@ export async function authMiddleware(req: AuthRequest, res: Response, next: Next
   const token = authHeader.split(' ')[1];
   try {
     const decoded = verifyToken(token);
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.userId },
+      select: { id: true, email: true, role: true },
+    });
     if (!user) {
       return res.status(401).json({ success: false, message: 'User not found' });
     }

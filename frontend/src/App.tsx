@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { AssistantContextProvider } from './contexts/AssistantContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
@@ -19,6 +20,7 @@ import Reviews from './pages/Reviews';
 import Messages from './pages/Messages';
 import AI from './pages/AI';
 import Portfolio from './pages/Portfolio';
+import Assistant from './components/Assistant';
 import { LoadingScreen } from './components/ui';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -66,7 +68,10 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
-        <AppRoutes />
+        <AssistantContextProvider>
+          <AppRoutes />
+          <Assistant />
+        </AssistantContextProvider>
       </AuthProvider>
     </BrowserRouter>
   );

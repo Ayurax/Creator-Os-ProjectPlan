@@ -1,6 +1,27 @@
 import prisma from '../config/prisma';
 import { aiRecommendationRepository } from '../repositories/ai.repository';
 import { HttpError } from '../utils/errors';
+import type { AssistantContext } from '../types';
+
+interface GroqResponseData {
+  id?: string;
+  object?: string;
+  created?: number;
+  model?: string;
+  choices?: {
+    index: number;
+    message: {
+      role: string;
+      content: string;
+    };
+    finish_reason?: string;
+  }[];
+  usage?: {
+    prompt_tokens?: number;
+    completion_tokens?: number;
+    total_tokens?: number;
+  };
+}
 
 export class AIService {
   async recommendCreators(input: { campaignId: number }, user: { userId: number; role: string }) {
@@ -10,7 +31,9 @@ export class AIService {
     const campaign = await prisma.campaign.findUnique({ where: { id: input.campaignId } });
     if (!campaign) throw new HttpError(404, 'Campaign not found');
 
-    const creators = await prisma.creator.findMany({ include: { user: true } });
+    const creators = await prisma.creator.findMany({
+      include: { user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } } },
+    });
     const ranked = creators
       .map((c) => {
         const engagement = c.engagementRate ?? 0;
@@ -94,7 +117,11 @@ export class AIService {
 
     const campaigns = await prisma.campaign.findMany({
       where: { status: 'ACTIVE' },
-      include: { brand: { include: { user: true } } },
+      include: {
+        brand: {
+          include: { user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } } },
+        },
+      },
     });
 
     const ranked = campaigns
@@ -137,7 +164,10 @@ export class AIService {
 
   async generateEmail(input: { campaignId: number; creatorId: number; tone?: string }, user: { userId: number; role: string }) {
     const campaign = await prisma.campaign.findUnique({ where: { id: input.campaignId } });
-    const creator = await prisma.creator.findUnique({ where: { id: input.creatorId }, include: { user: true } });
+    const creator = await prisma.creator.findUnique({
+      where: { id: input.creatorId },
+      include: { user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } } },
+    });
     if (!campaign || !creator) throw new HttpError(404, 'Not found');
 
     const email = `Subject: Collaboration Opportunity - ${campaign.name}\n\nHi ${creator.user.email},\n\nWe would love to collaborate with you on our ${campaign.name} campaign.\n\nBest regards,\n${user.role}`;
@@ -187,6 +217,154 @@ export class AIService {
     };
 
     return plan;
+  }
+
+  async chat(
+    input: { message: string; conversation?: Array<{ role: 'user' | 'assistant', content: string }> },
+    user: { userId: number; role: string; email?: string },
+    context?: AssistantContext,
+  ) {
+    if (!input.message || input.message.trim() === '') {
+      throw new HttpError(400, 'Message is required');
+    }
+
+    if (input.message.length > 1000) {
+      throw new HttpError(400, 'Message too long (max 1000 characters)');
+    }
+
+    const conversation = input.conversation?.slice(-10) || [];
+
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      throw new HttpError(503, 'Assistant is temporarily unavailable. Please try again later.');
+    }
+
+    const model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';
+
+    let contextSection = '';
+    if (context) {
+      const lines: string[] = [];
+      lines.push('CURRENT CREATOROS CONTEXT');
+      lines.push(`Role: ${context.role}`);
+      lines.push(`Page: ${context.page}`);
+      lines.push(`Route: ${context.route}`);
+
+      if (context.entity) {
+        lines.push('');
+        lines.push('Entity:');
+        lines.push(`Type: ${context.entity.type}`);
+        if (context.entity.id !== undefined) lines.push(`ID: ${context.entity.id}`);
+        if (context.entity.name) lines.push(`Name: ${context.entity.name}`);
+        if (context.entity.status) lines.push(`Status: ${context.entity.status}`);
+      }
+
+      if (context.data && Object.keys(context.data).length > 0) {
+        lines.push('');
+        lines.push('Relevant data:');
+        for (const [key, value] of Object.entries(context.data)) {
+          if (value !== undefined && value !== null && value !== '') {
+            lines.push(`${key}: ${JSON.stringify(value)}`);
+          }
+        }
+      }
+
+      lines.push('');
+      lines.push('Instructions:');
+      lines.push('- Treat this as the user\'s current application context.');
+      lines.push('- Use it when answering questions.');
+      lines.push('- Do not invent information not present in the context.');
+      lines.push('- If a requested fact is not available, say so.');
+      lines.push('- Do not claim to perform actions unless the application actually performs them.');
+
+      contextSection = lines.join('\n');
+    }
+
+    const systemPrompt = [
+      'You are CreatorOS Assistant, an AI helper designed to assist users with the CreatorOS platform.',
+      'You help users understand and navigate CreatorOS features including:',
+      '- Campaign creation and management',
+      '- Creator discovery and collaboration',
+      '- Contract management and negotiations',
+      '- Task and deliverable tracking',
+      '- Payment processing and invoicing',
+      '- Portfolio management',
+      '- Reviews and feedback',
+      '- Messaging and communication',
+      '- AI-powered tools and features',
+      '',
+      'Provide concise, practical answers focused on helping users accomplish tasks within CreatorOS.',
+      'Do not claim to have performed actions unless the application actually performed them.',
+      'Do not invent database records or expose internal system details.',
+      'Always prioritize the user\'s safety and privacy.',
+      '',
+      `Current user role: ${user.role}`,
+      `User email: ${user.email || 'Not provided'}`,
+      '',
+      contextSection,
+      '',
+      'When answering:',
+      '1. Be helpful and specific to CreatorOS workflows',
+      '2. Ask for clarification only when genuinely necessary',
+      '3. Use the user\'s role to provide relevant, targeted guidance',
+      '4. Focus on platform navigation and feature explanations',
+      '5. If unsure about specific platform details, suggest checking the relevant section or contacting support',
+      '6. Keep responses concise but comprehensive',
+    ]
+      .filter((line) => line !== null)
+      .join('\n');
+
+    const messages = [
+      { role: 'system' as const, content: systemPrompt },
+      ...conversation.map((exchange) => ({
+        role: exchange.role as 'user' | 'assistant',
+        content: exchange.content,
+      })),
+      { role: 'user' as const, content: input.message.trim() },
+    ];
+
+    try {
+      const requestBody = {
+        model,
+        messages,
+        temperature: 0.7,
+        max_tokens: 500,
+      };
+
+      const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        let errorMessage = 'Unknown error';
+
+        const responseText = await response.text();
+
+        try {
+          const errorDetails = JSON.parse(responseText);
+          errorMessage = errorDetails.message || errorDetails.error || 'Unknown error';
+        } catch {
+          errorMessage = responseText || 'Unknown error';
+        }
+
+        throw new HttpError(response.status, errorMessage || `Groq API error: ${response.status}`);
+      }
+
+      const data = (await response.json()) as GroqResponseData;
+      const assistantMessage = data.choices?.[0]?.message?.content || '';
+      return { message: assistantMessage };
+    } catch (error) {
+      if (error instanceof HttpError) {
+        throw error;
+      }
+
+      console.error('Groq chat error:', error);
+      throw new HttpError(503, 'Assistant is temporarily unavailable. Please try again.');
+    }
   }
 }
 

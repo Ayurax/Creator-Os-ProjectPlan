@@ -9,7 +9,10 @@ export const messageController = {
     try {
       const { receiverId, content } = req.body;
       if (!receiverId || !content) throw new HttpError(400, 'receiverId and content are required');
-      const receiver = await prisma.user.findUnique({ where: { id: Number(receiverId) } });
+      const receiver = await prisma.user.findUnique({
+        where: { id: Number(receiverId) },
+        select: { id: true, email: true, role: true },
+      });
       if (!receiver) throw new HttpError(404, 'Receiver not found');
       const data = await messageRepository.create({
         senderId: req.user!.userId,

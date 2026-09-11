@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "frontend-design-complete": {
+      "source": "nhatmobile1/claude-skills",
+      "sourceType": "github",
+      "skillPath": "skills/frontend-design-complete/SKILL.md",
+      "computedHash": "28be75ec933b5bad268c3395aabbc93bfb6fb3c1e9ea62e46a087352047e0327"
+    },
     "redesign-existing-projects": {
       "source": "Leonxlnx/taste-skill",
       "sourceType": "github",
