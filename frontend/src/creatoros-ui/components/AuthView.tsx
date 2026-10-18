@@ -62,15 +62,15 @@ export function AuthView({ mode: initialMode = 'login', onSubmit }: {
     setFieldErrors((current) => ({ ...current, [key]: '' }));
   };
 
-  const validate = () => {
+  const validate = (currentValues: FormValues = values) => {
     const errors: Record<string, string> = {};
-    if (mode === 'register' && !values.displayName.trim()) errors.displayName = 'Enter your name.';
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(values.email)) errors.email = 'Enter a valid email address.';
-    if (values.password.length < 8) errors.password = 'Use at least 8 characters.';
-    if (mode === 'register' && values.password !== values.confirmPassword) errors.confirmPassword = 'Passwords do not match.';
+    if (mode === 'register' && !currentValues.displayName.trim()) errors.displayName = 'Enter your name.';
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentValues.email)) errors.email = 'Enter a valid email address.';
+    if (currentValues.password.length < 8) errors.password = 'Use at least 8 characters.';
+    if (mode === 'register' && currentValues.password !== currentValues.confirmPassword) errors.confirmPassword = 'Passwords do not match.';
     if (mode === 'register') {
       for (const field of roleFields[role]) {
-        const value = values[field.key]?.trim() || '';
+        const value = currentValues[field.key]?.trim() || '';
         if (field.required && !value) errors[field.key] = `${field.label} is required.`;
         if (value && field.type === 'url') {
           try { new URL(value); } catch { errors[field.key] = 'Enter a valid URL.'; }
@@ -86,19 +86,24 @@ export function AuthView({ mode: initialMode = 'login', onSubmit }: {
     return Object.keys(errors).length === 0;
   };
 
-  const submit = async (event: FormEvent) => {
+  const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setMessage('');
-    if (!validate()) return;
+    const submittedValues = { ...values };
+    for (const [key, value] of new FormData(event.currentTarget).entries()) {
+      if (typeof value === 'string') submittedValues[key] = value;
+    }
+    setValues(submittedValues);
+    if (!validate(submittedValues)) return;
     setBusy(true);
     try {
-      const profile: Record<string, unknown> = { displayName: values.displayName.trim() };
+      const profile: Record<string, unknown> = { displayName: submittedValues.displayName.trim() };
       for (const field of roleFields[role] || []) {
-        const value = values[field.key]?.trim();
+        const value = submittedValues[field.key]?.trim();
         if (!value) continue;
         profile[field.key] = ['followers', 'engagementRate', 'hourlyRate'].includes(field.key) ? Number(value) : value;
       }
-      await onSubmit?.({ email: values.email.trim(), password: values.password, role: mode === 'register' ? role : undefined, profile: mode === 'register' ? profile : undefined });
+      await onSubmit?.({ email: submittedValues.email.trim(), password: submittedValues.password, role: mode === 'register' ? role : undefined, profile: mode === 'register' ? profile : undefined });
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Unable to continue. Please try again.');
     } finally {
@@ -114,7 +119,7 @@ export function AuthView({ mode: initialMode = 'login', onSubmit }: {
 
   const field = (key: string, label: string, placeholder: string, type = 'text', required = false, hint?: string): ReactNode => (
     <Field key={key} label={label} htmlFor={`cos-${key}`} required={required} hint={fieldErrors[key] || hint} error={fieldErrors[key]}>
-      <Input id={`cos-${key}`} type={type} value={values[key] || ''} onChange={(event) => update(key, event.target.value)} placeholder={placeholder} required={required} autoComplete={key === 'email' ? 'email' : key === 'displayName' ? 'name' : undefined} />
+      <Input id={`cos-${key}`} name={key} type={type} value={values[key] || ''} onChange={(event) => update(key, event.target.value)} onInput={(event) => update(key, event.currentTarget.value)} placeholder={placeholder} required={required} autoComplete={key === 'email' ? 'email' : key === 'displayName' ? 'name' : undefined} />
     </Field>
   );
 
