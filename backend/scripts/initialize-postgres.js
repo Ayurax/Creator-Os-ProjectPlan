@@ -27,7 +27,8 @@ async function initialize() {
 
     const existing = await client.query('SELECT 1 FROM "_CreatorOSMigrations" WHERE "name" = $1', [migrationName]);
     if (existing.rowCount === 0) {
-      await client.query(fs.readFileSync(migrationPath, 'utf8'));
+      const migrationSql = fs.readFileSync(migrationPath, 'utf8').replace(/^\uFEFF/, '');
+      await client.query(migrationSql);
       await client.query('INSERT INTO "_CreatorOSMigrations" ("name") VALUES ($1)', [migrationName]);
       console.log(`Applied PostgreSQL migration ${migrationName}`);
     } else {
