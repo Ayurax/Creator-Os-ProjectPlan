@@ -65,7 +65,13 @@ export class TaskService {
     if (user.role === 'FREELANCER') {
       const fl = await prisma.freelancer.findUnique({ where: { userId: user.userId } });
       if (!fl || fl.id !== existing.assigneeId) throw new HttpError(403, 'Forbidden');
-    } else if (user.role !== 'BRAND' && user.role !== 'TALENT_MANAGER') {
+    } else if (user.role === 'BRAND') {
+      const brand = await prisma.brand.findUnique({ where: { userId: user.userId } });
+      if (!brand || brand.id !== existing.contract.brandId) throw new HttpError(403, 'Forbidden');
+    } else if (user.role === 'TALENT_MANAGER') {
+      const manager = await prisma.talentManager.findUnique({ where: { userId: user.userId } });
+      if (!manager || manager.id !== existing.contract.talentManagerId) throw new HttpError(403, 'Forbidden');
+    } else {
       throw new HttpError(403, 'Forbidden');
     }
 

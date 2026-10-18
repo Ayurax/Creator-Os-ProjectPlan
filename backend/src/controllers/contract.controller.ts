@@ -2,6 +2,7 @@ import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middleware/auth';
 import { contractService } from '../services/contract.service';
 import { ContractStatus } from '../types';
+import { HttpError } from '../utils/errors';
 
 export const contractController = {
   async create(req: AuthRequest, res: Response, next: NextFunction) {
@@ -32,7 +33,11 @@ export const contractController = {
   async updateStatus(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
+      const allowed: ContractStatus[] = ['DRAFT', 'ACTIVE', 'COMPLETED', 'TERMINATED'];
       const status = req.body.status as ContractStatus;
+      if (!Number.isInteger(id) || !allowed.includes(status)) {
+        throw new HttpError(400, 'Invalid contract status or id');
+      }
       const data = await contractService.updateStatus(id, status, req.user!);
       res.json({ success: true, data });
     } catch (e) {

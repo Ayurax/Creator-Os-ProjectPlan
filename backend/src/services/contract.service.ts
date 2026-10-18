@@ -58,9 +58,10 @@ export class ContractService {
     throw new HttpError(403, 'Forbidden');
   }
 
-  async getById(id: number, _user: { userId: number; role: string }) {
+  async getById(id: number, user: { userId: number; role: string }) {
     const contract = await contractRepository.findById(id);
     if (!contract) throw new HttpError(404, 'Contract not found');
+    await this.assertAccess(contract, user);
     return contract;
   }
 
@@ -71,10 +72,45 @@ export class ContractService {
     if (user.role === 'BRAND') {
       const brand = await prisma.brand.findUnique({ where: { userId: user.userId } });
       if (!brand || brand.id !== contract.brandId) throw new HttpError(403, 'Forbidden');
-    } else if (user.role !== 'TALENT_MANAGER' && user.role !== 'CREATOR') {
+    } else if (user.role === 'CREATOR') {
+      const creator = await prisma.creator.findUnique({ where: { userId: user.userId } });
+      if (!creator || creator.id !== contract.creatorId) throw new HttpError(403, 'Forbidden');
+    } else if (user.role === 'TALENT_MANAGER') {
+      const manager = await prisma.talentManager.findUnique({ where: { userId: user.userId } });
+      if (!manager || manager.id !== contract.talentManagerId) throw new HttpError(403, 'Forbidden');
+    } else {
       throw new HttpError(403, 'Forbidden');
     }
     return contractRepository.updateStatus(id, status);
+  }
+
+  private async assertAccess(
+    contract: { brandId: number; creatorId: number; talentManagerId: number | null; tasks: Array<{ assigneeId: number | null }> },
+    user: { userId: number; role: string },
+  ) {
+    if (user.role === 'BRAND') {
+      const brand = await prisma.brand.findUnique({ where: { userId: user.userId } });
+      if (!brand || brand.id !== contract.brandId) throw new HttpError(403, 'Forbidden');
+      return;
+    }
+    if (user.role === 'CREATOR') {
+      const creator = await prisma.creator.findUnique({ where: { userId: user.userId } });
+      if (!creator || creator.id !== contract.creatorId) throw new HttpError(403, 'Forbidden');
+      return;
+    }
+    if (user.role === 'TALENT_MANAGER') {
+      const manager = await prisma.talentManager.findUnique({ where: { userId: user.userId } });
+      if (!manager || manager.id !== contract.talentManagerId) throw new HttpError(403, 'Forbidden');
+      return;
+    }
+    if (user.role === 'FREELANCER') {
+      const freelancer = await prisma.freelancer.findUnique({ where: { userId: user.userId } });
+      if (!freelancer || !contract.tasks.some((task) => task.assigneeId === freelancer.id)) {
+        throw new HttpError(403, 'Forbidden');
+      }
+      return;
+    }
+    throw new HttpError(403, 'Forbidden');
   }
 }
 

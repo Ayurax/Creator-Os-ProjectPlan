@@ -33,14 +33,42 @@ export class CampaignService {
     });
   }
 
-  async list(_user: { userId: number; role: string }) {
-    return campaignRepository.listAll();
+  async list(user: { userId: number; role: string }) {
+    if (user.role === 'BRAND') {
+      const brand = await prisma.brand.findUnique({ where: { userId: user.userId } });
+      if (!brand) throw new HttpError(404, 'Brand profile not found');
+      return campaignRepository.listByBrand(brand.id);
+    }
+    if (user.role === 'TALENT_MANAGER') {
+      const manager = await prisma.talentManager.findUnique({ where: { userId: user.userId } });
+      if (!manager) throw new HttpError(404, 'Talent manager profile not found');
+      return campaignRepository.listByTalentManager(manager.id);
+    }
+    if (user.role === 'CREATOR') {
+      const creator = await prisma.creator.findUnique({ where: { userId: user.userId } });
+      if (!creator) throw new HttpError(404, 'Creator profile not found');
+      return campaignRepository.listByCreator(creator.id);
+    }
+    return [];
   }
 
-  async getById(id: number) {
+  async getById(id: number, user: { userId: number; role: string }) {
     const campaign = await campaignRepository.findById(id);
     if (!campaign) {
       throw new HttpError(404, 'Campaign not found');
+    }
+    if (user.role === 'BRAND') {
+      const brand = await prisma.brand.findUnique({ where: { userId: user.userId } });
+      if (!brand || brand.id !== campaign.brandId) throw new HttpError(403, 'Forbidden');
+    } else if (user.role === 'TALENT_MANAGER') {
+      const manager = await prisma.talentManager.findUnique({ where: { userId: user.userId } });
+      if (!manager || manager.id !== campaign.talentManagerId) throw new HttpError(403, 'Forbidden');
+    } else if (user.role === 'CREATOR') {
+      const creator = await prisma.creator.findUnique({ where: { userId: user.userId } });
+      const invited = creator && campaign.collaborationRequests.some((request) => request.creatorId === creator.id);
+      if (!invited) throw new HttpError(403, 'Forbidden');
+    } else {
+      throw new HttpError(403, 'Forbidden');
     }
     return campaign;
   }
@@ -66,7 +94,10 @@ export class CampaignService {
       if (!brand || brand.id !== existing.brandId) {
         throw new HttpError(403, 'Forbidden');
       }
-    } else if (user.role !== 'TALENT_MANAGER') {
+    } else if (user.role === 'TALENT_MANAGER') {
+      const manager = await prisma.talentManager.findUnique({ where: { userId: user.userId } });
+      if (!manager || manager.id !== existing.talentManagerId) throw new HttpError(403, 'Forbidden');
+    } else {
       throw new HttpError(403, 'Forbidden');
     }
     const { status, ...rest } = data;

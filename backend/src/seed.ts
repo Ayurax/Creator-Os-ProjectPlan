@@ -66,6 +66,7 @@ async function main() {
     },
     include: { talentManager: true },
   });
+  void managerUser;
 
   const campaign = await prisma.campaign.create({
     data: {

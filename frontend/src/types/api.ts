@@ -3,6 +3,7 @@ export interface User {
   email: string;
   role: 'BRAND' | 'CREATOR' | 'FREELANCER' | 'TALENT_MANAGER';
   name?: string;
+  displayName?: string;
   bio?: string;
 }
 

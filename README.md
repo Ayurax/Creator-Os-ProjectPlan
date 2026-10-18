@@ -38,3 +38,32 @@ Build a web prototype for CreatorOS AI: a creator–brand collaboration platform
 Do not build a real payment gateway. Model payment records/status only.
 Do not build a social-media scraping system. Use seeded/demo creator data.
 Do not make AI autonomous. AI should provide suggestions that users can review and accept.
+
+## Deployment
+
+The local backend continues to use SQLite through `backend/prisma/schema.prisma` and
+`DATABASE_URL="file:./dev.db"`. Production uses the separate
+`backend/prisma/schema.postgresql.prisma` and Neon PostgreSQL.
+
+### Vercel
+
+- Root directory: `frontend`
+- Framework preset: Vite
+- Build command: `npm run build`
+- Output directory: `dist`
+- Environment variable: `VITE_API_URL=https://<render-service>.onrender.com/api`
+
+`frontend/vercel.json` keeps React Router routes working on refresh.
+
+### Render
+
+- Blueprint: `render.yaml`, or configure the service with root directory `backend`
+- Build command: `npm ci && npm run build:render`
+- Start command: `npm start`
+- Pre-deploy command: `npm run prisma:initialize:postgres`
+- Health check path: `/api/health`
+
+Set `DATABASE_URL` to the Neon pooled connection string with
+`?sslmode=require`, plus `JWT_SECRET`, `FRONTEND_URL` (the Vercel origin),
+`CORS_ORIGINS` (the same origin, or comma-separated allowed origins), and the
+optional server-side Groq variables. Never put database or JWT secrets in Vercel.

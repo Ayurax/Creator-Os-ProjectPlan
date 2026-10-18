@@ -30,6 +30,20 @@ export class CampaignRepository {
       orderBy: { createdAt: 'desc' },
     });
   }
+  listByTalentManager(talentManagerId: number) {
+    return prisma.campaign.findMany({
+      where: { talentManagerId },
+      include: { brand: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+  listByCreator(creatorId: number) {
+    return prisma.campaign.findMany({
+      where: { collaborationRequests: { some: { creatorId } } },
+      include: { brand: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
   listAll() {
     return prisma.campaign.findMany({ include: { brand: true }, orderBy: { createdAt: 'desc' } });
   }

@@ -22,7 +22,7 @@ export const campaignController = {
   async get(req: AuthRequest, res: Response, next: NextFunction) {
     try {
       const id = Number(req.params.id);
-      const data = await campaignService.getById(id);
+      const data = await campaignService.getById(id, req.user!);
       res.json({ success: true, data });
     } catch (e) {
       next(e);

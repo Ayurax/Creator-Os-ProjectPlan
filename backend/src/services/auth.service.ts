@@ -4,91 +4,142 @@ import { signToken } from '../utils/jwt';
 import { HttpError } from '../utils/errors';
 import { UserRole } from '../types';
 
+type RegistrationProfile = Record<string, unknown>;
+
+const text = (profile: RegistrationProfile, key: string, label: string) => {
+  const value = profile[key];
+  if (typeof value !== 'string' || !value.trim()) throw new HttpError(400, `${label} is required`);
+  return value.trim();
+};
+
+const optionalText = (profile: RegistrationProfile, key: string) => {
+  const value = profile[key];
+  return typeof value === 'string' && value.trim() ? value.trim() : null;
+};
+
+const optionalUrl = (profile: RegistrationProfile, key: string, label: string) => {
+  const value = optionalText(profile, key);
+  if (value) {
+    try {
+      new URL(value);
+    } catch {
+      throw new HttpError(400, `${label} must be a valid URL`);
+    }
+  }
+  return value;
+};
+
+const optionalNumber = (
+  profile: RegistrationProfile,
+  key: string,
+  label: string,
+  isValid: (value: number) => boolean,
+) => {
+  if (profile[key] === undefined || profile[key] === null || profile[key] === '') return null;
+  const value = profile[key];
+  if (typeof value !== 'number' || !Number.isFinite(value) || !isValid(value)) {
+    throw new HttpError(400, `${label} must be a valid number`);
+  }
+  return value;
+};
+
 export class AuthService {
-  async register(input: {
-    email: string;
-    password: string;
-    role: UserRole;
-    profile?: Record<string, unknown>;
-  }) {
-    const existing = await userRepository.findByEmail(input.email);
-    if (existing) {
+  async register(input: { email: string; password: string; role: UserRole; profile?: RegistrationProfile }) {
+    const email = input.email?.trim().toLowerCase();
+    const profile = input.profile ?? {};
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new HttpError(400, 'Enter a valid email address');
+    }
+    if (!input.password || input.password.length < 8) {
+      throw new HttpError(400, 'Password must be at least 8 characters');
+    }
+    if (!['BRAND', 'CREATOR', 'FREELANCER', 'TALENT_MANAGER'].includes(input.role)) {
+      throw new HttpError(400, 'Select a valid account role');
+    }
+    if (await userRepository.findByEmail(email)) {
       throw new HttpError(409, 'Email already in use');
     }
-    const passwordHash = await hashPassword(input.password);
 
-    const role = input.role;
-    const baseData: { email: string; passwordHash: string; role: string } = {
-      email: input.email,
+    const passwordHash = await hashPassword(input.password);
+    const baseData = {
+      email,
       passwordHash,
-      role,
+      role: input.role,
+      displayName: text(profile, 'displayName', 'Full name'),
     };
 
     const data =
-      role === 'BRAND'
+      input.role === 'BRAND'
         ? {
             ...baseData,
             brand: {
               create: {
-                companyName: String(input.profile?.companyName ?? 'Unnamed Brand'),
-                industry: input.profile?.industry ? String(input.profile.industry) : null,
-                description: input.profile?.description ? String(input.profile.description) : null,
+                companyName: text(profile, 'companyName', 'Company name'),
+                industry: text(profile, 'industry', 'Industry'),
+                website: optionalUrl(profile, 'website', 'Company website'),
+                description: optionalText(profile, 'description'),
               },
             },
           }
-        : role === 'CREATOR'
+        : input.role === 'CREATOR'
           ? {
               ...baseData,
               creator: {
                 create: {
-                  bio: input.profile?.bio ? String(input.profile.bio) : null,
-                  niche: input.profile?.niche ? String(input.profile.niche) : null,
-                  followers: typeof input.profile?.followers === 'number' ? input.profile.followers : null,
-                  engagementRate:
-                    typeof input.profile?.engagementRate === 'number' ? input.profile.engagementRate : null,
+                  bio: optionalText(profile, 'bio'),
+                  niche: text(profile, 'niche', 'Content niche'),
+                  platforms: optionalText(profile, 'platforms'),
+                  followers: optionalNumber(profile, 'followers', 'Follower count', (value) => Number.isInteger(value) && value >= 0),
+                  engagementRate: optionalNumber(
+                    profile,
+                    'engagementRate',
+                    'Engagement rate',
+                    (value) => value >= 0 && value <= 100,
+                  ),
                 },
               },
             }
-          : role === 'FREELANCER'
+          : input.role === 'FREELANCER'
             ? {
                 ...baseData,
                 freelancer: {
                   create: {
-                    skills: input.profile?.skills ? String(input.profile.skills) : null,
-                    hourlyRate: typeof input.profile?.hourlyRate === 'number' ? input.profile.hourlyRate : null,
-                    availability: input.profile?.availability ? String(input.profile.availability) : null,
+                    skills: text(profile, 'skills', 'Primary skills'),
+                    hourlyRate: optionalNumber(profile, 'hourlyRate', 'Hourly rate', (value) => value >= 0),
+                    availability: optionalText(profile, 'availability'),
+                    portfolioUrl: optionalUrl(profile, 'portfolioUrl', 'Portfolio URL'),
                   },
                 },
               }
             : {
                 ...baseData,
-                talentManager: { create: {} },
+                talentManager: {
+                  create: {
+                    agencyName: optionalText(profile, 'agencyName'),
+                    specialty: optionalText(profile, 'specialty'),
+                    bio: optionalText(profile, 'bio'),
+                  },
+                },
               };
 
     const user = await userRepository.create(data);
     const token = signToken({ userId: user.id, role: user.role });
-    return { token, user: { id: user.id, email: user.email, role: user.role } };
+    return { token, user: { id: user.id, email: user.email, role: user.role, displayName: user.displayName } };
   }
 
   async login(input: { email: string; password: string }) {
-    const user = await userRepository.findByEmail(input.email);
-    if (!user) {
-      throw new HttpError(401, 'Invalid credentials');
-    }
-    const ok = await comparePassword(input.password, user.passwordHash);
-    if (!ok) {
+    const user = await userRepository.findByEmail(input.email.trim().toLowerCase());
+    if (!user || !(await comparePassword(input.password, user.passwordHash))) {
       throw new HttpError(401, 'Invalid credentials');
     }
     const token = signToken({ userId: user.id, role: user.role });
-    return { token, user: { id: user.id, email: user.email, role: user.role } };
+    return { token, user: { id: user.id, email: user.email, role: user.role, displayName: user.displayName } };
   }
 
   async me(userId: number) {
     const user = await userRepository.findById(userId);
-    if (!user) {
-      throw new HttpError(404, 'User not found');
-    }
-    return { id: user.id, email: user.email, role: user.role };
+    if (!user) throw new HttpError(404, 'User not found');
+    return { id: user.id, email: user.email, role: user.role, displayName: user.displayName };
   }
 }
 

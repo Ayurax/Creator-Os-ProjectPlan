@@ -1,5 +1,6 @@
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { AppShell as CreatorOSAppShell, type AppSection } from '../creatoros-ui/components/AppShell';
 
 type Role = 'BRAND' | 'CREATOR' | 'FREELANCER' | 'TALENT_MANAGER';
 
@@ -84,56 +85,42 @@ export function AppShell({
   children: React.ReactNode;
   eyebrow?: string;
 }) {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const role = user?.role as Role | undefined;
   const visibleNav = navItems.filter((item) => !role || item.roles.includes(role));
   const dashboardPath = getDashboardPath(user?.role);
   const identity = user?.name || user?.email || 'CreatorOS user';
+  const location = useLocation();
+  const sectionRoutes: Record<AppSection, string> = {
+    Overview: dashboardPath,
+    Campaigns: '/campaigns',
+    Creators: '/creators',
+    Collaborations: '/collaborations',
+    Contracts: '/contracts',
+    Tasks: '/tasks',
+    Payments: '/payments',
+    Reviews: '/reviews',
+    Messages: '/messages',
+    Portfolio: '/portfolio',
+    Analytics: '/ai',
+  };
+  const active = (Object.entries(sectionRoutes).find(([, path]) => location.pathname.startsWith(path))?.[0] || 'Overview') as AppSection;
+  const visibleSections = (['Overview', ...visibleNav.map((item) => {
+    const entry = Object.entries(sectionRoutes).find(([, path]) => path === item.to);
+    return entry?.[0];
+  }).filter(Boolean)] as AppSection[]);
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <Link to={dashboardPath} className="brand-lockup" aria-label="CreatorOS dashboard">
-          <span className="brand-mark">CO</span>
-          <span>
-            <span className="brand-name">CreatorOS</span>
-            <span className="brand-caption">{formatRole(user?.role)}</span>
-          </span>
-        </Link>
-
-        <nav className="sidebar-nav" aria-label="Primary navigation">
-          <NavLink to={dashboardPath} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-            Dashboard
-          </NavLink>
-          {visibleNav.map((item) => (
-            <NavLink key={item.to} to={item.to} className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-              {item.label}
-            </NavLink>
-          ))}
-        </nav>
-
-        <div className="sidebar-profile">
-          <div className="avatar">{identity.slice(0, 2).toUpperCase()}</div>
-          <div className="profile-copy">
-            <span className="profile-name">{identity}</span>
-            <span className="profile-role">{formatRole(user?.role)}</span>
-          </div>
-        </div>
-      </aside>
-
-      <div className="workspace">
-        <header className="topbar">
-          <div>
-            <span className="topbar-eyebrow">{eyebrow || formatRole(user?.role)}</span>
-            <p className="topbar-title">Welcome back, {user?.name || user?.email}</p>
-          </div>
-          <button type="button" onClick={logout} className="button button-ghost">
-            Logout
-          </button>
-        </header>
-        <main className="page-frame">{children}</main>
-      </div>
-    </div>
+    <CreatorOSAppShell
+      active={active}
+      onNavigate={(section) => navigate(sectionRoutes[section])}
+      userName={identity}
+      userRole={eyebrow || formatRole(user?.role)}
+      visibleSections={visibleSections}
+    >
+      {children}
+    </CreatorOSAppShell>
   );
 }
 

@@ -23,7 +23,26 @@ dotenv.config();
 
 const app: Express = express();
 
-app.use(cors());
+const configuredOrigins = [process.env.FRONTEND_URL, ...(process.env.CORS_ORIGINS || '').split(',')]
+  .filter((origin): origin is string => Boolean(origin))
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+const developmentOrigins = ['http://localhost:5173', 'http://localhost:5174', 'http://localhost:5177'];
+const allowedOrigins = new Set(
+  process.env.NODE_ENV === 'production' ? configuredOrigins : [...configuredOrigins, ...developmentOrigins],
+);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error('Origin is not allowed by CreatorOS CORS policy'));
+    },
+  }),
+);
 app.use(express.json());
 
 app.get('/', (_req, res) => {
@@ -58,6 +77,7 @@ app.use((req, res) => {
 });
 
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+  void _next;
   if (err instanceof HttpError) {
     return res.status(err.status).json({ success: false, message: err.message });
   }
