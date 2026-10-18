@@ -23,6 +23,8 @@ export const reviewController = {
       if (!brand || !campaign || campaign.brandId !== brand.id || campaign.collaborationRequests.length === 0) {
         throw new HttpError(403, 'You can only review creators from your accepted collaborations');
       }
+      const existing = await prisma.review.findFirst({ where: { campaignId, creatorId } });
+      if (existing) throw new HttpError(409, 'This creator has already been reviewed for this campaign');
       const data = await reviewRepository.create({ campaignId, creatorId, rating, comment });
       res.status(201).json({ success: true, data });
     } catch (e) {

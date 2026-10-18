@@ -11,6 +11,8 @@ export default function Portfolio() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const [ready, setReady] = useState(false);
   const { setContext } = useAssistantContext();
 
@@ -48,14 +50,51 @@ export default function Portfolio() {
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setSaving(true);
     try {
-      await api.post('/portfolio', { title, description, mediaUrl });
+      if (mediaUrl && !/^https?:\/\/\S+$/i.test(mediaUrl)) {
+        throw new Error('Enter a valid HTTP(S) media URL.');
+      }
+      if (editingId) {
+        await api.put(`/portfolio/${editingId}`, { title, description, mediaUrl });
+      } else {
+        await api.post('/portfolio', { title, description, mediaUrl });
+      }
       setTitle('');
       setDescription('');
       setMediaUrl('');
+      setEditingId(null);
       loadPortfolio();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const editItem = (item: PortfolioItem) => {
+    setEditingId(item.id);
+    setTitle(item.title);
+    setDescription(item.description || '');
+    setMediaUrl(item.mediaUrl || '');
+    setError('');
+  };
+
+  const deleteItem = async (id: string) => {
+    if (!window.confirm('Delete this portfolio item?')) return;
+    setError('');
+    try {
+      await api.delete(`/portfolio/${id}`);
+      setItems((current) => current.filter((item) => item.id !== id));
+      if (editingId === id) {
+        setEditingId(null);
+        setTitle('');
+        setDescription('');
+        setMediaUrl('');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete portfolio item');
     }
   };
 
@@ -85,7 +124,8 @@ export default function Portfolio() {
               <input id="mediaUrl" type="url" placeholder="https://example.com/work" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="input" />
             </div>
             <div className="form-actions full">
-              <button type="submit" className="button">Add to portfolio</button>
+              <button type="submit" className="button" disabled={saving}>{saving ? 'Saving...' : editingId ? 'Save changes' : 'Add to portfolio'}</button>
+              {editingId && <button type="button" className="button-link" onClick={() => { setEditingId(null); setTitle(''); setDescription(''); setMediaUrl(''); }}>Cancel edit</button>}
             </div>
           </form>
         </Section>
@@ -118,6 +158,10 @@ export default function Portfolio() {
                   {item.mediaUrl && (
                     <a href={item.mediaUrl} className="button-link" target="_blank" rel="noopener noreferrer">View media</a>
                   )}
+                  <div className="form-actions" style={{ marginTop: '0.8rem' }}>
+                    <button type="button" className="button-link" onClick={() => editItem(item)}>Edit</button>
+                    <button type="button" className="button-link" onClick={() => void deleteItem(item.id)}>Delete</button>
+                  </div>
                 </div>
               ))}
             </div>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../api/client';
-import type { Review } from '../types/api';
+import { useAuth } from '../contexts/AuthContext';
+import type { Campaign, Collaboration, Creator, Review } from '../types/api';
 import { Alert, AppShell, EmptyState, LoadingScreen, PageHeader, Section } from '../components/ui';
 import { useAssistantContext } from '../hooks/useAssistantContext';
 
@@ -8,11 +9,15 @@ export default function Reviews() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [targetType, setTargetType] = useState('CREATOR');
-  const [targetId, setTargetId] = useState('');
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [creators, setCreators] = useState<Creator[]>([]);
+  const [collaborations, setCollaborations] = useState<Collaboration[]>([]);
+  const [campaignId, setCampaignId] = useState('');
+  const [creatorId, setCreatorId] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [ready, setReady] = useState(false);
+  const { user } = useAuth();
   const { setContext } = useAssistantContext();
 
   useEffect(() => {
@@ -47,11 +52,26 @@ export default function Reviews() {
     }
   };
 
+  useEffect(() => {
+    if (user?.role !== 'BRAND') return;
+    Promise.all([
+      api.get<{ success: boolean; data: Campaign[] }>('/campaigns'),
+      api.get<{ success: boolean; data: Creator[] }>('/creators'),
+      api.get<{ success: boolean; data: Collaboration[] }>('/collaborations'),
+    ]).then(([campaignResponse, creatorResponse, collaborationResponse]) => {
+      setCampaigns(campaignResponse.data || []);
+      setCreators(creatorResponse.data || []);
+      setCollaborations(collaborationResponse.data || []);
+    }).catch((err) => setError(err instanceof Error ? err.message : 'Unable to load review targets.'));
+  }, [user?.role]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await api.post('/reviews', { targetType, targetId, rating: Number(rating), comment });
-      setTargetId('');
+      if (!campaignId || !creatorId) throw new Error('Choose an accepted campaign and creator.');
+      await api.post('/reviews', { campaignId: Number(campaignId), creatorId: Number(creatorId), rating: Number(rating), comment });
+      setCampaignId('');
+      setCreatorId('');
       setRating(5);
       setComment('');
       loadReviews();
@@ -71,18 +91,26 @@ export default function Reviews() {
       {error && <Alert>{error}</Alert>}
 
       <div style={{ opacity: ready ? 1 : 0, transform: ready ? 'translateY(0)' : 'translateY(10px)', transition: 'opacity 500ms ease, transform 500ms ease' }}>
-        <Section title="Submit review" description="Share feedback">
+        {user?.role === 'BRAND' && <Section title="Submit review" description="Review a creator from an accepted collaboration">
           <form onSubmit={handleSubmit} className="form-grid">
             <div className="form-field">
-              <label htmlFor="targetType">Target type</label>
-              <select id="targetType" value={targetType} onChange={(e) => setTargetType(e.target.value)} className="input">
-                <option value="CREATOR">Creator</option>
-                <option value="BRAND">Brand</option>
+              <label htmlFor="campaignId">Campaign</label>
+              <select id="campaignId" value={campaignId} onChange={(e) => { setCampaignId(e.target.value); setCreatorId(''); }} className="input" required>
+                <option value="">Choose a campaign</option>
+                {campaigns.filter((campaign) => collaborations.some((collaboration) => collaboration.campaignId === campaign.id && collaboration.status === 'ACCEPTED')).map((campaign) => (
+                  <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
+                ))}
               </select>
             </div>
             <div className="form-field">
-              <label htmlFor="targetId">Target ID</label>
-              <input id="targetId" value={targetId} onChange={(e) => setTargetId(e.target.value)} className="input" required />
+              <label htmlFor="creatorId">Creator</label>
+              <select id="creatorId" value={creatorId} onChange={(e) => setCreatorId(e.target.value)} className="input" required disabled={!campaignId}>
+                <option value="">Choose a creator</option>
+                {collaborations.filter((collaboration) => collaboration.campaignId === campaignId && collaboration.status === 'ACCEPTED').map((collaboration) => {
+                  const creator = creators.find((candidate) => candidate.id === collaboration.creatorId);
+                  return <option key={collaboration.creatorId} value={collaboration.creatorId}>{creator?.name || creator?.email || `Creator ${collaboration.creatorId}`}</option>;
+                })}
+              </select>
             </div>
             <div className="form-field">
               <label htmlFor="rating">Rating</label>
@@ -96,7 +124,7 @@ export default function Reviews() {
               <button type="submit" className="button">Submit review</button>
             </div>
           </form>
-        </Section>
+        </Section>}
 
         <div className="panel">
           <div className="section-heading">

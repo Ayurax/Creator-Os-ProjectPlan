@@ -39,10 +39,10 @@ export function AppShell({ active, onNavigate, children, userName = 'Alex Morgan
     setNotificationsLoading(true);
     setNotificationsError('');
     try {
-      const response = await api.get<{ success: boolean; data: Array<{ id: number; message: string; isRead: boolean; createdAt: string }> }>('/notifications');
+      const response = await api.get<{ success: boolean; data: Array<{ id: number; content: string; isRead: boolean; createdAt: string }> }>('/notifications');
       setNotifications((response.data || []).map((notification) => ({
         id: String(notification.id),
-        message: notification.message,
+        message: notification.content,
         read: notification.isRead,
         createdAt: notification.createdAt,
       })));
@@ -87,11 +87,18 @@ export function AppShell({ active, onNavigate, children, userName = 'Alex Morgan
     };
   }, []);
   const isVisible = (section: AppSection) => !visibleSections || visibleSections.includes(section);
+  const sectionLabel = (section: AppSection) => {
+    if (section === 'Campaigns' && user?.role === 'CREATOR') return 'Discover Campaigns';
+    if (section === 'Creators' && user?.role === 'BRAND') return 'Discover Creators';
+    if (section === 'Collaborations') return 'Collaborations / Invitations';
+    if (section === 'Tasks') return 'Tasks / Deliverables';
+    return section;
+  };
   const navGroup = (label: string, items: Array<{ label: AppSection; icon: IconName; count?: string }>) => (
     <div className="cos-nav-group" key={label}>
       <div className="cos-nav-label">{label}</div>
       {items.filter((item) => isVisible(item.label)).map((item) => <button key={item.label} className={`cos-nav-item ${active === item.label ? 'is-active' : ''}`} onClick={() => change(item.label)} aria-current={active === item.label ? 'page' : undefined}>
-        <Icon name={item.icon} size={18} /><span>{item.label}</span>{item.count && <span className="cos-nav-count">{item.count}</span>}
+        <Icon name={item.icon} size={18} /><span>{sectionLabel(item.label)}</span>{item.count && <span className="cos-nav-count">{item.count}</span>}
       </button>)}
     </div>
   );

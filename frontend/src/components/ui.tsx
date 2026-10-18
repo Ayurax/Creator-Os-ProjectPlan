@@ -5,15 +5,15 @@ import { AppShell as CreatorOSAppShell, type AppSection } from '../creatoros-ui/
 type Role = 'BRAND' | 'CREATOR' | 'FREELANCER' | 'TALENT_MANAGER';
 
 const navItems = [
-  { to: '/campaigns', label: 'Campaigns', roles: ['BRAND', 'CREATOR', 'FREELANCER', 'TALENT_MANAGER'] },
+  { to: '/campaigns', label: 'Campaigns', roles: ['BRAND', 'CREATOR', 'TALENT_MANAGER'] },
   { to: '/creators', label: 'Creators', roles: ['BRAND', 'FREELANCER', 'TALENT_MANAGER'] },
-  { to: '/collaborations', label: 'Collaborations', roles: ['BRAND', 'CREATOR', 'FREELANCER', 'TALENT_MANAGER'] },
+  { to: '/collaborations', label: 'Collaborations', roles: ['BRAND', 'CREATOR', 'TALENT_MANAGER'] },
   { to: '/contracts', label: 'Contracts', roles: ['BRAND', 'CREATOR', 'FREELANCER', 'TALENT_MANAGER'] },
   { to: '/tasks', label: 'Tasks', roles: ['BRAND', 'CREATOR', 'FREELANCER', 'TALENT_MANAGER'] },
   { to: '/payments', label: 'Payments', roles: ['BRAND', 'CREATOR', 'FREELANCER', 'TALENT_MANAGER'] },
-  { to: '/reviews', label: 'Reviews', roles: ['BRAND', 'CREATOR', 'FREELANCER', 'TALENT_MANAGER'] },
+  { to: '/reviews', label: 'Reviews', roles: ['BRAND', 'CREATOR'] },
   { to: '/messages', label: 'Messages', roles: ['BRAND', 'CREATOR', 'FREELANCER', 'TALENT_MANAGER'] },
-  { to: '/portfolio', label: 'Portfolio', roles: ['CREATOR', 'FREELANCER'] },
+  { to: '/portfolio', label: 'Portfolio', roles: ['CREATOR'] },
   { to: '/ai', label: 'AI Tools', roles: ['BRAND', 'CREATOR', 'FREELANCER', 'TALENT_MANAGER'] },
 ] satisfies Array<{ to: string; label: string; roles: Role[] }>;
 

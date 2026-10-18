@@ -7,6 +7,12 @@ export class PortfolioRepository {
   findById(id: number) {
     return prisma.portfolio.findUnique({ where: { id } });
   }
+  update(id: number, data: { title?: string; description?: string; mediaUrl?: string }) {
+    return prisma.portfolio.update({ where: { id }, data });
+  }
+  delete(id: number) {
+    return prisma.portfolio.delete({ where: { id } });
+  }
   listByCreator(creatorId: number) {
     return prisma.portfolio.findMany({ where: { creatorId }, orderBy: { createdAt: 'desc' } });
   }

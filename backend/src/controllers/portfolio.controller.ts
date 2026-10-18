@@ -49,4 +49,51 @@ export const portfolioController = {
       next(e);
     }
   },
+  async update(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const portfolio = await getOwnedPortfolio(req);
+      const { title, description, mediaUrl } = req.body;
+      const trimmedTitle = typeof title === 'string' ? title.trim() : '';
+      if (!trimmedTitle) throw new HttpError(400, 'Title is required');
+      validateMediaUrl(mediaUrl);
+      const data = await portfolioRepository.update(portfolio.id, {
+        title: trimmedTitle,
+        description: typeof description === 'string' ? description.trim() : undefined,
+        mediaUrl: typeof mediaUrl === 'string' && mediaUrl.trim() ? mediaUrl.trim() : undefined,
+      });
+      res.json({ success: true, data });
+    } catch (e) {
+      next(e);
+    }
+  },
+  async remove(req: AuthRequest, res: Response, next: NextFunction) {
+    try {
+      const portfolio = await getOwnedPortfolio(req);
+      await portfolioRepository.delete(portfolio.id);
+      res.json({ success: true });
+    } catch (e) {
+      next(e);
+    }
+  },
 };
+
+async function getOwnedPortfolio(req: AuthRequest) {
+  if (req.user!.role !== 'CREATOR') throw new HttpError(403, 'Only creators can manage portfolio items');
+  const creator = await prisma.creator.findUnique({ where: { userId: req.user!.userId } });
+  if (!creator) throw new HttpError(404, 'Creator profile not found');
+  const portfolio = await portfolioRepository.findById(Number(req.params.id));
+  if (!portfolio) throw new HttpError(404, 'Portfolio item not found');
+  if (portfolio.creatorId !== creator.id) throw new HttpError(403, 'Forbidden');
+  return portfolio;
+}
+
+function validateMediaUrl(mediaUrl: unknown) {
+  if (!mediaUrl) return;
+  if (typeof mediaUrl !== 'string') throw new HttpError(400, 'Enter a valid media URL');
+  try {
+    const url = new URL(mediaUrl);
+    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Unsupported protocol');
+  } catch {
+    throw new HttpError(400, 'Enter a valid media URL');
+  }
+}
