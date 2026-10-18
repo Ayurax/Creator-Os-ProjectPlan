@@ -1,21 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  --font-family-serif: "Instrument Serif", ui-serif, Georgia, Cambria, "Times New Roman", serif;
-  --font-family-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-family-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  --font-family-serif: Georgia, Cambria, "Times New Roman", serif;
+  --font-family-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
 
-  --color-paper: #fafaf9;
-  --color-paper-elevated: #f5f5f4;
-  --color-ink: #171717;
-  --color-ink-secondary: #525252;
-  --color-ink-tertiary: #737373;
-  --color-line: #e7e5e4;
-  --color-line-strong: #d4d4d4;
+  --color-paper: #F7F8FA;
+  --color-paper-elevated: #FFFFFF;
+  --color-ink: #111827;
+  --color-ink-secondary: #374151;
+  --color-ink-tertiary: #6B7280;
+  --color-line: #EEF0F3;
+  --color-line-strong: #D1D5DB;
   --color-surface: #ffffff;
-  --color-accent: #c2410c;
-  --color-accent-hover: #9a3412;
-  --color-accent-soft: #fff7ed;
+  --color-accent: #006F98;
+  --color-accent-hover: #005A7C;
+  --color-accent-soft: #E6F7FC;
   --color-success: #15803d;
   --color-success-soft: #f0fdf4;
   --color-success-line: #bbf7d0;
@@ -28,9 +28,9 @@
   --color-info: #1d4ed8;
   --color-info-soft: #eff6ff;
   --color-info-line: #bfdbfe;
-  --color-sidebar: #171717;
-  --color-sidebar-soft: #262626;
-  --color-sidebar-line: #333333;
+  --color-sidebar: #002244;
+  --color-sidebar-soft: #10324F;
+  --color-sidebar-line: #1E4665;
   --color-console-text: #86efac;
   --color-console-bg: #0b1220;
   --color-console-border: #1e293b;
@@ -1508,25 +1508,25 @@ tbody tr:hover {
 
 /* CreatorOS studio system: cool editorial utility */
 :root {
-  --color-paper: #f4f7fb;
-  --color-paper-elevated: #eaf0f7;
-  --color-ink: #102033;
-  --color-ink-secondary: #50647a;
-  --color-ink-tertiary: #71859a;
-  --color-line: #d9e2ec;
-  --color-line-strong: #bdcad8;
-  --color-surface: #ffffff;
-  --color-accent: #3157d5;
-  --color-accent-hover: #2443ad;
-  --color-accent-soft: #e8edff;
-  --color-sidebar: #102033;
-  --color-sidebar-soft: #1b3048;
-  --color-sidebar-line: #29415d;
-  --font-family-serif: "Instrument Serif", Georgia, serif;
-  --font-family-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --color-paper: #F7F8FA;
+  --color-paper-elevated: #FFFFFF;
+  --color-ink: #111827;
+  --color-ink-secondary: #374151;
+  --color-ink-tertiary: #6B7280;
+  --color-line: #EEF0F3;
+  --color-line-strong: #D1D5DB;
+  --color-surface: #FFFFFF;
+  --color-accent: #006F98;
+  --color-accent-hover: #005A7C;
+  --color-accent-soft: #E6F7FC;
+  --color-sidebar: #002244;
+  --color-sidebar-soft: #10324F;
+  --color-sidebar-line: #1E4665;
+  --font-family-serif: Georgia, Cambria, "Times New Roman", serif;
+  --font-family-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --shadow: 0 12px 32px rgb(16 32 51 / 0.08);
   --shadow-sm: 0 3px 12px rgb(16 32 51 / 0.06);
-  --radius: 10px;
+  --radius: 8px;
 }
 
 @layer overrides {
@@ -1730,7 +1730,7 @@ tbody tr:hover {
   .nav-link:focus-visible,
   .input:focus-visible,
   a:focus-visible {
-    outline: 3px solid rgb(49 87 213 / 0.35);
+    outline: 3px solid rgb(0 111 152 / 0.35);
     outline-offset: 3px;
   }
 

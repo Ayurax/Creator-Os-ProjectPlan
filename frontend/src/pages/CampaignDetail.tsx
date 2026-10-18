@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import type { Campaign, Collaboration } from '../types/api';
 import { Alert, AppShell, EmptyState, LoadingScreen, PageHeader, StatusBadge } from '../components/ui';
 import { useAssistantContext } from '../hooks/useAssistantContext';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function CampaignDetail() {
   const { id } = useParams();
@@ -11,11 +12,14 @@ export default function CampaignDetail() {
   const { setContext } = useAssistantContext();
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [collabs, setCollabs] = useState<Collaboration[]>([]);
+  const [creators, setCreators] = useState<Array<{ id: string; name: string; email: string }>>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [creatorId, setCreatorId] = useState('');
   const [inviting, setInviting] = useState(false);
   const [ready, setReady] = useState(false);
+  const { user } = useAuth();
+  const canInvite = user?.role === 'BRAND' || user?.role === 'TALENT_MANAGER';
 
   useEffect(() => {
     if (!id) return;
@@ -25,11 +29,22 @@ export default function CampaignDetail() {
     ])
       .then(([c, c2]) => {
         if (c.success && c.data) setCampaign(c.data);
-        if (c2.success && c2.data) setCollabs(c2.data.filter((x) => x.campaignId === id));
+        if (c2.success && c2.data) setCollabs(c2.data.filter((x) => String(x.campaignId) === id));
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed'))
       .finally(() => setLoading(false));
   }, [id]);
+
+  useEffect(() => {
+    if (!canInvite) return;
+    api.get<{ success: boolean; data: Array<{ id: number; user?: { displayName?: string; email?: string } }> }>('/creators')
+      .then((response) => setCreators((response.data || []).map((creator) => ({
+        id: String(creator.id),
+        name: creator.user?.displayName || 'Creator',
+        email: creator.user?.email || '',
+      }))))
+      .catch((err) => setError(err instanceof Error ? err.message : 'Unable to load creators.'));
+  }, [canInvite]);
 
   useEffect(() => {
     if (!loading) {
@@ -63,10 +78,10 @@ export default function CampaignDetail() {
     if (!id || !creatorId) return;
     setInviting(true);
     try {
-      await api.post('/collaborations', { campaignId: id, creatorId });
+      await api.post('/collaborations', { campaignId: Number(id), creatorId: Number(creatorId) });
       setCreatorId('');
       const res = await api.get<{ success: boolean; data: Collaboration[] }>('/collaborations');
-      if (res.success && res.data) setCollabs(res.data.filter((x) => x.campaignId === id));
+      if (res.success && res.data) setCollabs(res.data.filter((x) => String(x.campaignId) === id));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to invite creator');
     } finally {
@@ -113,7 +128,7 @@ export default function CampaignDetail() {
           </div>
         </div>
 
-        <div className="panel" style={{ marginBottom: '1.1rem' }}>
+        {canInvite && <div className="panel" style={{ marginBottom: '1.1rem' }}>
           <div className="section-heading" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
             <div>
               <h2>Invite creator</h2>
@@ -122,8 +137,11 @@ export default function CampaignDetail() {
           </div>
           <form onSubmit={handleInvite} className="form-grid">
             <div className="form-field">
-              <label htmlFor="creatorId">Creator ID</label>
-              <input id="creatorId" value={creatorId} onChange={(e) => setCreatorId(e.target.value)} className="input" required />
+              <label htmlFor="creatorId">Creator</label>
+              <select id="creatorId" value={creatorId} onChange={(e) => setCreatorId(e.target.value)} className="input" required>
+                <option value="">Select a creator</option>
+                {creators.map((creator) => <option key={creator.id} value={creator.id}>{creator.name}{creator.email ? ` · ${creator.email}` : ''} (ID {creator.id})</option>)}
+              </select>
             </div>
             <div className="form-actions">
               <button type="submit" disabled={inviting} className="button">
@@ -131,7 +149,7 @@ export default function CampaignDetail() {
               </button>
             </div>
           </form>
-        </div>
+        </div>}
 
         <div className="panel">
           <div className="section-heading" style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between' }}>
@@ -153,7 +171,7 @@ export default function CampaignDetail() {
                   style={{ opacity: ready ? 1 : 0, transform: ready ? 'translateY(0)' : 'translateY(6px)', transition: `opacity 400ms ease ${idx * 50 + 150}ms, transform 400ms ease ${idx * 50 + 150}ms` }}
                 >
                   <div className="list-row-main">
-                    <strong>Creator {col.creatorId}</strong>
+                    <strong>{creators.find((creator) => creator.id === String(col.creatorId))?.name || `Creator ${col.creatorId}`}</strong>
                     <p>{col.message || 'No message'}</p>
                   </div>
                   <div className="list-row-meta">

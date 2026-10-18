@@ -2,11 +2,25 @@ import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import { Alert, AppShell, EmptyState, PageHeader, Section } from '../components/ui';
 import { useAssistantContext } from '../hooks/useAssistantContext';
+import { useAuth } from '../contexts/AuthContext';
 
 type Tab = 'recommend' | 'summarize' | 'estimate' | 'email' | 'plan';
 
 export default function AI() {
-  const [tab, setTab] = useState<Tab>('recommend');
+  const { user } = useAuth();
+  const isBrandOrManager = user?.role === 'BRAND' || user?.role === 'TALENT_MANAGER';
+  const availableTabs: Array<{ key: Tab; label: string }> = [
+    ...(isBrandOrManager ? [{ key: 'recommend' as const, label: 'Recommend creators' }] : []),
+    ...(['BRAND', 'CREATOR', 'TALENT_MANAGER'].includes(user?.role || '') ? [{ key: 'summarize' as const, label: 'Campaign summary' }] : []),
+    { key: 'estimate', label: 'Price estimate' },
+    ...(isBrandOrManager ? [{ key: 'email' as const, label: 'Generate email' }] : []),
+    { key: 'plan', label: 'Content plan' },
+  ];
+  const [tab, setTab] = useState<Tab>(() => isBrandOrManager ? 'recommend' : user?.role === 'CREATOR' ? 'summarize' : 'estimate');
+  const [campaigns, setCampaigns] = useState<Array<{ id: number; name: string }>>([]);
+  const [creators, setCreators] = useState<Array<{ id: number; name: string; email: string }>>([]);
+  const [campaignId, setCampaignId] = useState('');
+  const [creatorId, setCreatorId] = useState('');
   const [result, setResult] = useState<string>('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -15,6 +29,19 @@ export default function AI() {
   useEffect(() => {
     setContext({ page: 'AI Tools', route: '/ai', data: {} });
   }, [setContext]);
+
+  useEffect(() => {
+    if (['BRAND', 'CREATOR', 'TALENT_MANAGER'].includes(user?.role || '')) {
+      api.get<{ success: boolean; data: Array<{ id: number; name: string }> }>('/campaigns')
+        .then((response) => setCampaigns(response.data || []))
+        .catch((err) => setError(err instanceof Error ? err.message : 'Unable to load campaigns.'));
+    }
+    if (isBrandOrManager) {
+      api.get<{ success: boolean; data: Array<{ id: number; user?: { displayName?: string; email?: string } }> }>('/creators')
+        .then((response) => setCreators((response.data || []).map((creator) => ({ id: creator.id, name: creator.user?.displayName || 'Creator', email: creator.user?.email || '' }))))
+        .catch((err) => setError(err instanceof Error ? err.message : 'Unable to load creators.'));
+    }
+  }, [isBrandOrManager, user?.role]);
 
   const run = async (fn: () => Promise<any>) => {
     setLoading(true);
@@ -39,13 +66,7 @@ export default function AI() {
       {error && <Alert>{error}</Alert>}
 
       <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '1.25rem', flexWrap: 'wrap' }}>
-        {([
-          { key: 'recommend', label: 'Recommend creators' },
-          { key: 'summarize', label: 'Campaign summary' },
-          { key: 'estimate', label: 'Price estimate' },
-          { key: 'email', label: 'Generate email' },
-          { key: 'plan', label: 'Content plan' },
-        ] as const).map((t) => (
+        {availableTabs.map((t) => (
           <button
             key={t.key}
             type="button"
@@ -59,17 +80,19 @@ export default function AI() {
 
       <div style={{ display: 'grid', gap: '1.25rem', gridTemplateColumns: '1fr 1fr' }}>
         <Section title={tab === 'recommend' ? 'Recommend creators' : tab === 'summarize' ? 'Summarize campaign' : tab === 'estimate' ? 'Estimate price' : tab === 'email' ? 'Generate email' : 'Content plan'} description="Input parameters">
+          {['recommend', 'summarize', 'email'].includes(tab) && <div className="form-field" style={{ marginBottom: '1rem' }}><label htmlFor="ai-campaign">Campaign</label><select id="ai-campaign" className="input" value={campaignId} onChange={(event) => setCampaignId(event.target.value)}><option value="">Select a campaign</option>{campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.name} (ID {campaign.id})</option>)}</select></div>}
+          {tab === 'email' && <div className="form-field" style={{ marginBottom: '1rem' }}><label htmlFor="ai-creator">Creator</label><select id="ai-creator" className="input" value={creatorId} onChange={(event) => setCreatorId(event.target.value)}><option value="">Select a creator</option>{creators.map((creator) => <option key={creator.id} value={creator.id}>{creator.name}{creator.email ? ` Â· ${creator.email}` : ''} (ID {creator.id})</option>)}</select></div>}
           {tab === 'recommend' && (
-            <RecommendForm onRun={() => run(async () => api.post('/ai/recommend-creators', { campaignId: Number(prompt('Campaign ID')) || 1 }))} />
+            <RecommendForm onRun={() => run(async () => { if (!campaignId) throw new Error('Select a campaign first.'); return api.post('/ai/recommend-creators', { campaignId: Number(campaignId) }); })} />
           )}
           {tab === 'summarize' && (
-            <SummarizeForm onRun={() => run(async () => api.post('/ai/summarize-campaign', { campaignId: Number(prompt('Campaign ID')) || 1 }))} />
+            <SummarizeForm onRun={() => run(async () => { if (!campaignId) throw new Error('Select a campaign first.'); return api.post('/ai/summarize-campaign', { campaignId: Number(campaignId) }); })} />
           )}
           {tab === 'estimate' && (
             <EstimateForm onRun={() => run(async () => api.post('/ai/estimate-price', { niche: 'Technology', followers: 50000, engagementRate: 4.5, platform: 'instagram' }))} />
           )}
           {tab === 'email' && (
-            <EmailForm onRun={() => run(async () => api.post('/ai/generate-email', { campaignId: Number(prompt('Campaign ID')) || 1, creatorId: Number(prompt('Creator ID')) || 1 }))} />
+            <EmailForm onRun={() => run(async () => { if (!campaignId || !creatorId) throw new Error('Select a campaign and creator first.'); return api.post('/ai/generate-email', { campaignId: Number(campaignId), creatorId: Number(creatorId) }); })} />
           )}
           {tab === 'plan' && (
             <PlanForm onRun={() => run(async () => api.post('/ai/content-plan', { niche: 'Technology' }))} />
@@ -126,8 +149,4 @@ function PlanForm({ onRun }: { onRun: () => void }) {
       <button type="button" onClick={onRun} className="button">Generate plan</button>
     </div>
   );
-}
-
-function prompt(message: string): string {
-  return window.prompt(message) || '';
 }

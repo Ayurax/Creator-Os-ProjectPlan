@@ -8,7 +8,7 @@ export class CreatorRepository {
     return prisma.creator.findUnique({
       where: { id },
       include: {
-        user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } },
+        user: { select: { id: true, email: true, displayName: true, role: true, createdAt: true, updatedAt: true } },
         portfolio: true,
       },
     });
@@ -26,7 +26,7 @@ export class CreatorRepository {
         followers: filters.minFollowers ? { gte: filters.minFollowers } : undefined,
       },
       include: {
-        user: { select: { id: true, email: true, role: true, createdAt: true, updatedAt: true } },
+        user: { select: { id: true, email: true, displayName: true, role: true, createdAt: true, updatedAt: true } },
         portfolio: true,
       },
     });

@@ -59,7 +59,7 @@ export const portfolioController = {
       const data = await portfolioRepository.update(portfolio.id, {
         title: trimmedTitle,
         description: typeof description === 'string' ? description.trim() : undefined,
-        mediaUrl: typeof mediaUrl === 'string' && mediaUrl.trim() ? mediaUrl.trim() : undefined,
+        mediaUrl: typeof mediaUrl === 'string' ? mediaUrl.trim() || null : undefined,
       });
       res.json({ success: true, data });
     } catch (e) {

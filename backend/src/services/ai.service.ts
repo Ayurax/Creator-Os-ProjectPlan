@@ -341,18 +341,19 @@ export class AIService {
       });
 
       if (!response.ok) {
-        let errorMessage = 'Unknown error';
-
-        const responseText = await response.text();
-
-        try {
-          const errorDetails = JSON.parse(responseText);
-          errorMessage = errorDetails.message || errorDetails.error || 'Unknown error';
-        } catch {
-          errorMessage = responseText || 'Unknown error';
+        // Never pass provider responses through to clients: they can contain
+        // implementation details and are not actionable for workspace users.
+        await response.text().catch(() => '');
+        if (response.status === 401 || response.status === 403) {
+          throw new HttpError(503, 'The assistant provider rejected its server key. Check GROQ_API_KEY in Render environment settings.');
         }
-
-        throw new HttpError(response.status, errorMessage || `Groq API error: ${response.status}`);
+        if (response.status === 429) {
+          throw new HttpError(429, 'The assistant is rate limited right now. Wait a moment and try again.');
+        }
+        if (response.status === 400) {
+          throw new HttpError(503, 'The assistant model configuration was rejected. Check GROQ_MODEL in Render environment settings.');
+        }
+        throw new HttpError(503, 'The assistant provider is temporarily unavailable. Please try again shortly.');
       }
 
       const data = (await response.json()) as GroqResponseData;
@@ -366,7 +367,6 @@ export class AIService {
         throw error;
       }
 
-      console.error('Groq chat error:', error);
       if (error instanceof Error && error.name === 'TimeoutError') {
         throw new HttpError(504, 'Assistant request timed out. Please try again.');
       }

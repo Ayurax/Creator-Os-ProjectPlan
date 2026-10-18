@@ -7,7 +7,7 @@ export class PortfolioRepository {
   findById(id: number) {
     return prisma.portfolio.findUnique({ where: { id } });
   }
-  update(id: number, data: { title?: string; description?: string; mediaUrl?: string }) {
+  update(id: number, data: { title?: string; description?: string; mediaUrl?: string | null }) {
     return prisma.portfolio.update({ where: { id }, data });
   }
   delete(id: number) {

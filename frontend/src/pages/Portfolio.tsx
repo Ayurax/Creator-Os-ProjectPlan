@@ -3,22 +3,28 @@ import { api } from '../api/client';
 import type { PortfolioItem } from '../types/api';
 import { Alert, AppShell, EmptyState, LoadingScreen, PageHeader, Section } from '../components/ui';
 import { useAssistantContext } from '../hooks/useAssistantContext';
+import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 export default function Portfolio() {
+  const { user } = useAuth();
+  const canManage = user?.role === 'CREATOR';
   const [items, setItems] = useState<PortfolioItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(canManage);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [mediaUrl, setMediaUrl] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const { setContext } = useAssistantContext();
 
   useEffect(() => {
-    loadPortfolio();
-  }, []);
+    if (canManage) void loadPortfolio();
+  }, [canManage]);
 
   useEffect(() => {
     if (!loading) {
@@ -37,20 +43,25 @@ export default function Portfolio() {
     });
   }, [items, setContext]);
 
-  const loadPortfolio = async () => {
+  async function loadPortfolio() {
     try {
       const res = await api.get<{ success: boolean; data: PortfolioItem[] }>('/portfolio/mine');
-      if (res.success && res.data) setItems(res.data);
+      if (!res.success || !res.data) throw new Error('The portfolio could not be loaded.');
+      setItems(res.data);
+      setError('');
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
+      return false;
     } finally {
       setLoading(false);
     }
-  };
+  }
 
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setNotice('');
     setSaving(true);
     try {
       if (mediaUrl && !/^https?:\/\/\S+$/i.test(mediaUrl)) {
@@ -65,7 +76,7 @@ export default function Portfolio() {
       setDescription('');
       setMediaUrl('');
       setEditingId(null);
-      await loadPortfolio();
+      if (await loadPortfolio()) setNotice(editingId ? 'Portfolio item updated.' : 'Portfolio item added.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -84,9 +95,11 @@ export default function Portfolio() {
   const deleteItem = async (id: string) => {
     if (!window.confirm('Delete this portfolio item?')) return;
     setError('');
+    setNotice('');
+    setDeletingId(id);
     try {
       await api.delete(`/portfolio/${id}`);
-      await loadPortfolio();
+      if (await loadPortfolio()) setNotice('Portfolio item deleted.');
       if (editingId === id) {
         setEditingId(null);
         setTitle('');
@@ -95,6 +108,8 @@ export default function Portfolio() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete portfolio item');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -107,8 +122,11 @@ export default function Portfolio() {
         description="Showcase your best work and deliverables."
       />
       {error && <Alert>{error}</Alert>}
+      {notice && <div className="cos-inline-success" role="status">{notice}</div>}
 
-      <div style={{ opacity: ready ? 1 : 0, transform: ready ? 'translateY(0)' : 'translateY(10px)', transition: 'opacity 500ms ease, transform 500ms ease' }}>
+      {!canManage && <Alert>This portfolio editor is for Creator accounts. <Link to="/creators">Browse creator portfolios</Link>.</Alert>}
+
+      {canManage && <div style={{ opacity: ready ? 1 : 0, transform: ready ? 'translateY(0)' : 'translateY(10px)', transition: 'opacity 500ms ease, transform 500ms ease' }}>
         <Section title="Add work" description="Upload a new portfolio piece">
           <form onSubmit={handleAdd} className="form-grid">
             <div className="form-field full">
@@ -160,14 +178,14 @@ export default function Portfolio() {
                   )}
                   <div className="form-actions" style={{ marginTop: '0.8rem' }}>
                     <button type="button" className="button-link" onClick={() => editItem(item)}>Edit</button>
-                    <button type="button" className="button-link" onClick={() => void deleteItem(item.id)}>Delete</button>
+                    <button type="button" className="button-link" disabled={deletingId === item.id} onClick={() => void deleteItem(item.id)}>{deletingId === item.id ? 'Deleting…' : 'Delete'}</button>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
-      </div>
+      </div>}
     </AppShell>
   );
 }

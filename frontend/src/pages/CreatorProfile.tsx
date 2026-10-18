@@ -18,11 +18,17 @@ export default function CreatorProfile() {
   useEffect(() => {
     if (!id) return;
     Promise.all([
-      api.get<{ success: boolean; data: Creator }>(`/creators/${id}`),
+      api.get<{ success: boolean; data: Omit<Creator, 'platforms'> & { platforms?: string | string[] | null; user?: { email?: string; displayName?: string }; portfolio?: PortfolioItem[] } }>(`/creators/${id}`),
       api.get<{ success: boolean; data: PortfolioItem[] }>(`/creators/${id}/portfolio`),
     ])
       .then(([c, p]) => {
-        if (c.success && c.data) setCreator(c.data);
+        if (c.success && c.data) setCreator({
+          ...c.data,
+          id: String(c.data.id),
+          name: c.data.user?.displayName || '',
+          email: c.data.user?.email || '',
+          platforms: typeof c.data.platforms === 'string' ? c.data.platforms.split(',').map((platform: string) => platform.trim()).filter(Boolean) : c.data.platforms || [],
+        });
         if (p.success && p.data) setPortfolio(p.data);
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed'))
@@ -61,7 +67,7 @@ export default function CreatorProfile() {
   return (
     <AppShell eyebrow="Creator Profile">
       <PageHeader
-        title={creator?.name || 'Creator'}
+        title={creator?.name || creator?.email || 'Creator'}
         description={creator?.bio || 'Creator profile and portfolio'}
         action={<Link to="/creators" className="button-link">Back to creators</Link>}
       />

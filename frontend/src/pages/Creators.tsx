@@ -36,18 +36,17 @@ export default function Creators() {
 
   const loadCreators = async () => {
     try {
-      const res = await api.get<{ success: boolean; data: any[] }>('/creators');
+      const res = await api.get<{ success: boolean; data: Array<{ id: number; user?: { email?: string; displayName?: string }; bio?: string; niche?: string; followers?: number; engagementRate?: number; platforms?: string | null }> }>('/creators');
       if (res.success && res.data) {
-        // Transform API response to match Creator interface
-        const transformed = res.data.map((c: any) => ({
+        const transformed = res.data.map((c) => ({
           id: String(c.id),
           email: c.user?.email || '',
-          name: c.user?.email ? c.user.email.split('@')[0] : '',
+          name: c.user?.displayName || '',
           bio: c.bio,
           niche: c.niche,
           followers: c.followers,
           engagementRate: c.engagementRate,
-          platforms: [], // API doesn't provide platforms
+          platforms: c.platforms ? c.platforms.split(',').map((platform) => platform.trim()).filter(Boolean) : [],
         }));
         setCreators(transformed);
       }
