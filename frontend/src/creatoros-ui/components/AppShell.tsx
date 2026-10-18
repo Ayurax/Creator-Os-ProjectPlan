@@ -32,6 +32,7 @@ export function AppShell({ active, onNavigate, children, userName = 'Alex Morgan
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationsError, setNotificationsError] = useState('');
+  const [search, setSearch] = useState('');
   const notificationsRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const change = (section: AppSection) => { onNavigate(section); setMobileOpen(false); };
@@ -86,6 +87,17 @@ export function AppShell({ active, onNavigate, children, userName = 'Alex Morgan
       document.removeEventListener('keydown', closeOnEscape);
     };
   }, []);
+  useEffect(() => {
+    const handleSearchShortcut = (event: KeyboardEvent) => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        document.getElementById('cos-workspace-search')?.focus();
+      }
+      if (event.key === 'Escape') setSearch('');
+    };
+    document.addEventListener('keydown', handleSearchShortcut);
+    return () => document.removeEventListener('keydown', handleSearchShortcut);
+  }, []);
   const isVisible = (section: AppSection) => !visibleSections || visibleSections.includes(section);
   const sectionLabel = (section: AppSection) => {
     if (section === 'Campaigns' && user?.role === 'CREATOR') return 'Discover Campaigns';
@@ -93,6 +105,18 @@ export function AppShell({ active, onNavigate, children, userName = 'Alex Morgan
     if (section === 'Collaborations') return 'Collaborations / Invitations';
     if (section === 'Tasks') return 'Tasks / Deliverables';
     return section;
+  };
+  const searchableSections = [...mainNav, ...workspaceNav]
+    .filter((item, index, items) => items.findIndex((candidate) => candidate.label === item.label) === index)
+    .filter((item) => isVisible(item.label));
+  const searchResults = searchableSections.filter((item) => sectionLabel(item.label).toLowerCase().includes(search.trim().toLowerCase()));
+  const submitSearch = (event: React.FormEvent) => {
+    event.preventDefault();
+    const result = searchResults[0];
+    if (result) {
+      change(result.label);
+      setSearch('');
+    }
   };
   const navGroup = (label: string, items: Array<{ label: AppSection; icon: IconName; count?: string }>) => (
     <div className="cos-nav-group" key={label}>
@@ -110,14 +134,14 @@ export function AppShell({ active, onNavigate, children, userName = 'Alex Morgan
       {navGroup('WORKSPACE', mainNav)}
       {navGroup('MANAGE', workspaceNav)}
       <div className="cos-sidebar-spacer" />
-      <div className="cos-sidebar-callout"><span className="cos-callout-orbit"><Icon name="sparkles" size={19} /></span><strong>Make room for better work.</strong><p>Bring the right people into every project.</p><button onClick={() => change('Creators')}>Explore creators <Icon name="arrow-up-right" size={14} /></button></div>
+      {isVisible('Creators') && <div className="cos-sidebar-callout"><span className="cos-callout-orbit"><Icon name="sparkles" size={19} /></span><strong>Make room for better work.</strong><p>Bring the right people into every project.</p><button onClick={() => change('Creators')}>Explore creators <Icon name="arrow-up-right" size={14} /></button></div>}
       <button className="cos-nav-item cos-nav-item--quiet" onClick={() => change('Analytics')}><Icon name="help" size={18} /><span>Help center</span></button>
-      <div className="cos-sidebar-user"><Avatar name={userName} color="violet" /><span className="cos-sidebar-user__name"><strong>{userName}</strong><small>{userRole}</small></span><button aria-label="Account settings" onClick={() => change('Analytics')}><Icon name="more" size={18} /></button></div>
+      <div className="cos-sidebar-user"><Avatar name={userName} color="violet" /><span className="cos-sidebar-user__name"><strong>{userName}</strong><small>{userRole}</small></span></div>
     </aside>
     <div className="cos-workspace">
       <header className="cos-topbar">
         <div className="cos-topbar__left"><button className="cos-icon-button cos-mobile-menu" aria-label="Open navigation" onClick={() => setMobileOpen(true)}><Icon name="menu" /></button><div className="cos-breadcrumb"><span>CreatorOS</span><Icon name="chevron-right" size={14} /><strong>{active}</strong></div></div>
-        <div className="cos-topbar__right"><Input leadingIcon="search" placeholder="Search your workspace" aria-label="Search your workspace" className="cos-top-search" /><span className="cos-key-hint">⌘ K</span><button type="button" className="cos-icon-button cos-top-action" aria-label="Help" onClick={() => change('Analytics')}><Icon name="help" /></button><div className="cos-menu-anchor" ref={notificationsRef}><button type="button" className="cos-icon-button cos-top-action cos-notification" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={toggleNotifications}><Icon name="bell" />{notifications.some((notification) => !notification.read) && <i />}</button>{notificationsOpen && <section className="cos-popover cos-notification-popover" aria-label="Notifications"><div className="cos-popover__header"><strong>Notifications</strong><button type="button" className="cos-popover__close" onClick={() => setNotificationsOpen(false)}>Close</button></div>{notificationsLoading && <p className="cos-popover__message">Loading notifications...</p>}{notificationsError && <p className="cos-popover__error">{notificationsError}</p>}{!notificationsLoading && !notificationsError && notifications.length === 0 && <p className="cos-popover__message">No notifications yet.</p>}{!notificationsLoading && notifications.map((notification) => <button type="button" className={`cos-notification-item ${notification.read ? '' : 'is-unread'}`} key={notification.id} onClick={() => void markNotificationRead(notification)}><span>{notification.message}</span><small>{new Date(notification.createdAt).toLocaleString()}</small></button>)}</section>}</div><span className="cos-top-divider" /><div className="cos-menu-anchor" ref={profileRef}><button type="button" className="cos-profile-button" aria-expanded={profileOpen} onClick={() => { setNotificationsOpen(false); setProfileOpen(!profileOpen); }}><Avatar name={userName} color="violet" size="sm" /><Icon name="chevron-down" size={14} /></button>{profileOpen && <section className="cos-popover cos-profile-popover" aria-label="Account menu"><strong>{userName}</strong><span>{user?.email || 'No email available'}</span><small>{userRole}</small><button type="button" onClick={() => { setProfileOpen(false); change('Overview'); }}>Workspace overview</button><button type="button" onClick={logout}>Log out</button></section>}</div></div>
+        <div className="cos-topbar__right"><div className="cos-search-anchor"><form onSubmit={submitSearch}><Input id="cos-workspace-search" leadingIcon="search" value={search} aria-controls="cos-search-results" onChange={(event) => setSearch(event.target.value)} placeholder="Search your workspace" aria-label="Search your workspace" className="cos-top-search" /></form>{search.trim() && <div id="cos-search-results" className="cos-search-results" role="listbox">{searchResults.length ? searchResults.map((result) => <button type="button" role="option" aria-selected="false" key={result.label} onClick={() => { change(result.label); setSearch(''); }}>{sectionLabel(result.label)}</button>) : <span role="status">No matching workspace section.</span>}</div>}</div><span className="cos-key-hint">⌘ K</span><button type="button" className="cos-icon-button cos-top-action" aria-label="Help" onClick={() => change('Analytics')}><Icon name="help" /></button><div className="cos-menu-anchor" ref={notificationsRef}><button type="button" className="cos-icon-button cos-top-action cos-notification" aria-label="Notifications" aria-expanded={notificationsOpen} onClick={toggleNotifications}><Icon name="bell" />{notifications.some((notification) => !notification.read) && <i />}</button>{notificationsOpen && <section className="cos-popover cos-notification-popover" aria-label="Notifications"><div className="cos-popover__header"><strong>Notifications</strong><button type="button" className="cos-popover__close" onClick={() => setNotificationsOpen(false)}>Close</button></div>{notificationsLoading && <p className="cos-popover__message">Loading notifications...</p>}{notificationsError && <p className="cos-popover__error">{notificationsError}</p>}{!notificationsLoading && !notificationsError && notifications.length === 0 && <p className="cos-popover__message">No notifications yet.</p>}{!notificationsLoading && notifications.map((notification) => <button type="button" className={`cos-notification-item ${notification.read ? '' : 'is-unread'}`} key={notification.id} onClick={() => void markNotificationRead(notification)}><span>{notification.message}</span><small>{new Date(notification.createdAt).toLocaleString()}</small></button>)}</section>}</div><span className="cos-top-divider" /><div className="cos-menu-anchor" ref={profileRef}><button type="button" className="cos-profile-button" aria-expanded={profileOpen} onClick={() => { setNotificationsOpen(false); setProfileOpen(!profileOpen); }}><Avatar name={userName} color="violet" size="sm" /><Icon name="chevron-down" size={14} /></button>{profileOpen && <section className="cos-popover cos-profile-popover" aria-label="Account menu"><strong>{userName}</strong><span>{user?.email || 'No email available'}</span><small>{userRole}</small><button type="button" onClick={() => { setProfileOpen(false); change('Overview'); }}>Workspace overview</button><button type="button" onClick={logout}>Log out</button></section>}</div></div>
       </header>
       <main className="cos-main" id="main-content"><div className="cos-main-inner">{children}</div><footer className="cos-footer"><span>© 2026 CreatorOS</span><span><i /> All systems operational</span></footer></main>
     </div>

@@ -337,6 +337,7 @@ export class AIService {
           Authorization: `Bearer ${apiKey}`,
         },
         body: JSON.stringify(requestBody),
+        signal: AbortSignal.timeout(20_000),
       });
 
       if (!response.ok) {
@@ -356,6 +357,9 @@ export class AIService {
 
       const data = (await response.json()) as GroqResponseData;
       const assistantMessage = data.choices?.[0]?.message?.content || '';
+      if (!assistantMessage.trim()) {
+        throw new HttpError(502, 'Assistant provider returned an empty response. Please try again.');
+      }
       return { message: assistantMessage };
     } catch (error) {
       if (error instanceof HttpError) {
@@ -363,6 +367,9 @@ export class AIService {
       }
 
       console.error('Groq chat error:', error);
+      if (error instanceof Error && error.name === 'TimeoutError') {
+        throw new HttpError(504, 'Assistant request timed out. Please try again.');
+      }
       throw new HttpError(503, 'Assistant is temporarily unavailable. Please try again.');
     }
   }

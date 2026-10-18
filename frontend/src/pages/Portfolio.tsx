@@ -65,7 +65,7 @@ export default function Portfolio() {
       setDescription('');
       setMediaUrl('');
       setEditingId(null);
-      loadPortfolio();
+      await loadPortfolio();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     } finally {
@@ -86,7 +86,7 @@ export default function Portfolio() {
     setError('');
     try {
       await api.delete(`/portfolio/${id}`);
-      setItems((current) => current.filter((item) => item.id !== id));
+      await loadPortfolio();
       if (editingId === id) {
         setEditingId(null);
         setTitle('');

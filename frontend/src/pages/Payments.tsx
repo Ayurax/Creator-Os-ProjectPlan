@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { api } from '../api/client';
 import type { Payment } from '../types/api';
 import { Alert, AppShell, EmptyState, LoadingScreen, PageHeader, StatusBadge } from '../components/ui';
+import { useAuth } from '../contexts/AuthContext';
 import { useAssistantContext } from '../hooks/useAssistantContext';
 
 export default function Payments() {
@@ -9,6 +10,7 @@ export default function Payments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
+  const { user } = useAuth();
   const { setContext } = useAssistantContext();
 
   useEffect(() => {
@@ -51,7 +53,7 @@ export default function Payments() {
 
   const handleMarkPaid = async (id: string) => {
     try {
-      await api.patch(`/payments/${id}/mark-paid`, {});
+      await api.post(`/payments/${id}/pay`, {});
       loadPayments();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -118,7 +120,7 @@ export default function Payments() {
                   <div className="list-row-meta">
                     <span className="mono">${p.amount.toLocaleString()}</span>
                     <StatusBadge status={p.status} />
-                    <button type="button" onClick={() => handleMarkPaid(p.id)} className="button-link" style={{ fontSize: '0.78rem' }}>Mark paid</button>
+                    {user?.role === 'BRAND' && <button type="button" onClick={() => handleMarkPaid(p.id)} className="button-link" style={{ fontSize: '0.78rem' }}>Mark paid</button>}
                   </div>
                 </div>
               ))}

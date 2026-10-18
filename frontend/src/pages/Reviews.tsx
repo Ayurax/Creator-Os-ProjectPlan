@@ -74,7 +74,7 @@ export default function Reviews() {
       setCreatorId('');
       setRating(5);
       setComment('');
-      loadReviews();
+      await loadReviews();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
     }

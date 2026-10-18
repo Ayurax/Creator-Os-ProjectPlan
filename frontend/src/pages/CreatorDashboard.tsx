@@ -11,24 +11,14 @@ export default function CreatorDashboard() {
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [userId, setUserId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const { setContext } = useAssistantContext();
 
   useEffect(() => {
-    const stored = localStorage.getItem('token');
-    if (!stored) return;
-    api.get<{ success: boolean; data: { id: string } }>('/auth/me')
-      .then((res) => { if (res.success && res.data) setUserId(res.data.id); })
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!userId) return;
     Promise.all([
       api.get<{ success: boolean; data: Collaboration[] }>('/collaborations'),
       api.get<{ success: boolean; data: Task[] }>('/tasks'),
-      api.get<{ success: boolean; data: PortfolioItem[] }>(`/creators/${userId}/portfolio`),
+      api.get<{ success: boolean; data: PortfolioItem[] }>('/portfolio/mine'),
     ])
       .then(([col, t, p]) => {
         if (col.success && col.data) setCollabs(col.data);
@@ -37,7 +27,7 @@ export default function CreatorDashboard() {
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed'))
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, []);
 
   useEffect(() => {
     if (!loading) {

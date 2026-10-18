@@ -80,7 +80,6 @@ export function Breadcrumbs() {
 
 export function AppShell({
   children,
-  eyebrow,
 }: {
   children: React.ReactNode;
   eyebrow?: string;
@@ -116,7 +115,7 @@ export function AppShell({
       active={active}
       onNavigate={(section) => navigate(sectionRoutes[section])}
       userName={identity}
-      userRole={eyebrow || formatRole(user?.role)}
+      userRole={formatRole(user?.role)}
       visibleSections={visibleSections}
     >
       {children}

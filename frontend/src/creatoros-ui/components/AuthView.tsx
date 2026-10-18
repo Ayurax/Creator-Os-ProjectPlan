@@ -62,14 +62,14 @@ export function AuthView({ mode: initialMode = 'login', onSubmit }: {
     setFieldErrors((current) => ({ ...current, [key]: '' }));
   };
 
-  const validate = (currentValues: FormValues = values) => {
+  const validate = (currentValues: FormValues = values, currentMode = mode, currentRole = role) => {
     const errors: Record<string, string> = {};
-    if (mode === 'register' && !currentValues.displayName.trim()) errors.displayName = 'Enter your name.';
+    if (currentMode === 'register' && !currentValues.displayName.trim()) errors.displayName = 'Enter your name.';
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentValues.email)) errors.email = 'Enter a valid email address.';
     if (currentValues.password.length < 8) errors.password = 'Use at least 8 characters.';
-    if (mode === 'register' && currentValues.password !== currentValues.confirmPassword) errors.confirmPassword = 'Passwords do not match.';
-    if (mode === 'register') {
-      for (const field of roleFields[role]) {
+    if (currentMode === 'register' && currentValues.password !== currentValues.confirmPassword) errors.confirmPassword = 'Passwords do not match.';
+    if (currentMode === 'register') {
+      for (const field of roleFields[currentRole]) {
         const value = currentValues[field.key]?.trim() || '';
         if (field.required && !value) errors[field.key] = `${field.label} is required.`;
         if (value && field.type === 'url') {
@@ -94,7 +94,7 @@ export function AuthView({ mode: initialMode = 'login', onSubmit }: {
       if (typeof value === 'string') submittedValues[key] = value;
     }
     setValues(submittedValues);
-    if (!validate(submittedValues)) return;
+    if (!validate(submittedValues, mode, role)) return;
     setBusy(true);
     try {
       const profile: Record<string, unknown> = { displayName: submittedValues.displayName.trim() };
@@ -132,7 +132,7 @@ export function AuthView({ mode: initialMode = 'login', onSubmit }: {
       {mode === 'register' && <div className="cos-form-section"><div className="cos-form-section-heading"><strong>Choose your role</strong><span>Your role shapes the fields we save.</span></div><div className="cos-role-picker" role="radiogroup" aria-label="Select your role">{roles.map((option) => <button type="button" role="radio" aria-checked={role === option.value} key={option.value} className={role === option.value ? 'is-selected' : ''} onClick={() => { setRole(option.value); setFieldErrors({}); }}><Icon name={option.icon} size={17} /><span><strong>{option.label}</strong><small>{option.desc}</small></span><i>{role === option.value ? <Icon name="check-circle" size={16} /> : null}</i></button>)}</div></div>}
       <div className="cos-form-section"><div className="cos-form-section-heading"><strong>{mode === 'register' ? 'About you' : 'Your account'}</strong><span>{mode === 'register' ? 'Use the name people should see in CreatorOS.' : 'Use your CreatorOS account.'}</span></div>{mode === 'register' ? <>{field('displayName', 'Full name or professional name', 'Maya Chen', 'text', true)}{field('email', 'Email address', 'you@example.com', 'email', true)}</> : field('email', 'Email', 'you@company.com', 'email', true)}</div>
       {mode === 'register' && <div className="cos-form-section"><div className="cos-form-section-heading"><strong>{role === 'BRAND' ? 'Organisation' : 'Professional profile'}</strong><span>These details power your role-specific workspace.</span></div><div className="cos-registration-fields">{roleFields[role].map((item) => field(item.key, item.label, item.placeholder, item.type, item.required, item.hint))}</div></div>}
-      <div className="cos-form-section"><div className="cos-form-section-heading"><strong>Account security</strong><span>Your password is encrypted before it is stored.</span></div><Field label="Password" htmlFor="cos-password" required error={fieldErrors.password}><Input id="cos-password" type={showPassword ? 'text' : 'password'} value={values.password} onChange={(event) => update('password', event.target.value)} placeholder="At least 8 characters" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} trailing={<button className="cos-password-toggle" type="button" onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Hide' : 'Show'}</button>} /></Field>{mode === 'register' && <Field label="Confirm password" htmlFor="cos-confirmPassword" required error={fieldErrors.confirmPassword}><Input id="cos-confirmPassword" type={showConfirm ? 'text' : 'password'} value={values.confirmPassword} onChange={(event) => update('confirmPassword', event.target.value)} placeholder="Repeat your password" autoComplete="new-password" trailing={<button className="cos-password-toggle" type="button" onClick={() => setShowConfirm(!showConfirm)}>{showConfirm ? 'Hide' : 'Show'}</button>} /></Field>}</div>
+      <div className="cos-form-section"><div className="cos-form-section-heading"><strong>Account security</strong><span>Your password is encrypted before it is stored.</span></div><Field label="Password" htmlFor="cos-password" required error={fieldErrors.password}><Input id="cos-password" name="password" type={showPassword ? 'text' : 'password'} value={values.password} onChange={(event) => update('password', event.target.value)} placeholder="At least 8 characters" autoComplete={mode === 'login' ? 'current-password' : 'new-password'} trailing={<button className="cos-password-toggle" type="button" onClick={() => setShowPassword(!showPassword)}>{showPassword ? 'Hide' : 'Show'}</button>} /></Field>{mode === 'register' && <Field label="Confirm password" htmlFor="cos-confirmPassword" required error={fieldErrors.confirmPassword}><Input id="cos-confirmPassword" name="confirmPassword" type={showConfirm ? 'text' : 'password'} value={values.confirmPassword} onChange={(event) => update('confirmPassword', event.target.value)} placeholder="Repeat your password" autoComplete="new-password" trailing={<button className="cos-password-toggle" type="button" onClick={() => setShowConfirm(!showConfirm)}>{showConfirm ? 'Hide' : 'Show'}</button>} /></Field>}</div>
       {message && <div className="cos-auth-message is-error" role="alert">{message}</div>}
       <Button type="submit" size="lg" className="cos-auth-submit" disabled={busy}>{busy ? 'Please wait…' : mode === 'login' ? 'Sign in to CreatorOS' : 'Create my workspace'} <Icon name="arrow-right" size={17} /></Button>
       <div className="cos-auth-trust"><Icon name="shield" size={16} /><span>Your workspace is private. We never share your credentials.</span></div>
