@@ -110,6 +110,20 @@ a { color: inherit; }
 .cos-notification i { position: absolute; right: 7px; top: 7px; width: 6px; height: 6px; border: 1.5px solid white; border-radius: 50%; background: #f36f71; }
 .cos-top-divider { height: 26px; width: 1px; margin: 0 6px; background: #e8ebf1; }
 .cos-profile-button { display: inline-flex; align-items: center; gap: 7px; padding: 3px 0 3px 4px; color: #667086; border: 0; background: transparent; }
+.cos-menu-anchor { position: relative; }
+.cos-popover { position: absolute; top: calc(100% + 12px); right: 0; z-index: 30; width: 320px; padding: 14px; background: white; border: 1px solid #e9ecf2; border-radius: 14px; box-shadow: 0 16px 40px rgba(25, 33, 52, .14); }
+.cos-popover__header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.cos-popover__close { padding: 0; color: #667086; border: 0; background: transparent; font-size: .72rem; cursor: pointer; }
+.cos-popover__message, .cos-popover__error { margin: 14px 0 4px; color: #667086; font-size: .82rem; }
+.cos-popover__error { color: #b33c4d; }
+.cos-notification-item { display: flex; width: 100%; flex-direction: column; gap: 5px; padding: 11px 9px; text-align: left; color: #303848; border: 0; border-radius: 9px; background: transparent; cursor: pointer; }
+.cos-notification-item:hover, .cos-notification-item.is-unread { background: #f3f6fa; }
+.cos-notification-item small { color: #8790a2; font-size: .7rem; }
+.cos-profile-popover { display: flex; flex-direction: column; gap: 6px; min-width: 220px; }
+.cos-profile-popover > strong { color: #202737; }
+.cos-profile-popover > span, .cos-profile-popover > small { color: #667086; font-size: .78rem; }
+.cos-profile-popover > button { margin-top: 7px; padding: 8px 9px; text-align: left; color: #303848; border: 0; border-radius: 7px; background: transparent; cursor: pointer; }
+.cos-profile-popover > button:hover { background: #f3f6fa; }
 .cos-main { padding: 29px 37px 0; }
 .cos-main-inner { max-width: 1470px; margin: 0 auto; min-height: calc(100vh - 143px); }
 .cos-footer { max-width: 1470px; min-height: 65px; margin: 0 auto; display: flex; align-items: center; gap: 22px; font-size: 10px; color: #929bad; border-top: 1px solid #e7eaf1; }

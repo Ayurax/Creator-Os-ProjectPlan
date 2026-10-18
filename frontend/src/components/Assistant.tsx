@@ -39,7 +39,7 @@ const Assistant = () => {
     return response.message;
   };
 
-  return <AssistantWidget key={user?.email || 'guest'} onSend={sendMessage} userName={user?.name || user?.email || 'there'} workspaceLabel={contextLabel || 'CreatorOS workspace'} />;
+  return <AssistantWidget key={user?.email || 'guest'} onSend={sendMessage} userName={user?.displayName || user?.name || user?.email || 'there'} workspaceLabel={contextLabel || 'CreatorOS workspace'} />;
 };
 
 export default Assistant;

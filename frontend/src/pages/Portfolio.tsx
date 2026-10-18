@@ -37,7 +37,7 @@ export default function Portfolio() {
 
   const loadPortfolio = async () => {
     try {
-      const res = await api.get<{ success: boolean; data: PortfolioItem[] }>('/portfolio');
+      const res = await api.get<{ success: boolean; data: PortfolioItem[] }>('/portfolio/mine');
       if (res.success && res.data) setItems(res.data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed');
@@ -82,7 +82,7 @@ export default function Portfolio() {
             </div>
             <div className="form-field full">
               <label htmlFor="mediaUrl">Media URL</label>
-              <input id="mediaUrl" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="input" />
+              <input id="mediaUrl" type="url" placeholder="https://example.com/work" value={mediaUrl} onChange={(e) => setMediaUrl(e.target.value)} className="input" />
             </div>
             <div className="form-actions full">
               <button type="submit" className="button">Add to portfolio</button>

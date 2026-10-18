@@ -236,7 +236,7 @@ export class AIService {
 
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
-      throw new HttpError(503, 'Assistant is temporarily unavailable. Please try again later.');
+      throw new HttpError(503, 'Assistant is unavailable because GROQ_API_KEY is not configured on the server.');
     }
 
     const model = process.env.GROQ_MODEL || 'openai/gpt-oss-120b';

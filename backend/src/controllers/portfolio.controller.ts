@@ -13,8 +13,17 @@ export const portfolioController = {
       const creator = await prisma.creator.findUnique({ where: { userId: req.user!.userId } });
       if (!creator) throw new HttpError(404, 'Creator profile not found');
       const { title, description, mediaUrl } = req.body;
-      if (!title) throw new HttpError(400, 'title is required');
-      const data = await portfolioRepository.create({ creatorId: creator.id, title, description, mediaUrl });
+      const trimmedTitle = typeof title === 'string' ? title.trim() : '';
+      if (!trimmedTitle) throw new HttpError(400, 'Title is required');
+      if (mediaUrl) {
+        try {
+          const url = new URL(mediaUrl);
+          if (!['http:', 'https:'].includes(url.protocol)) throw new Error('Unsupported protocol');
+        } catch {
+          throw new HttpError(400, 'Enter a valid media URL');
+        }
+      }
+      const data = await portfolioRepository.create({ creatorId: creator.id, title: trimmedTitle, description, mediaUrl });
       res.status(201).json({ success: true, data });
     } catch (e) {
       next(e);

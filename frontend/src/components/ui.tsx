@@ -90,7 +90,7 @@ export function AppShell({
   const role = user?.role as Role | undefined;
   const visibleNav = navItems.filter((item) => !role || item.roles.includes(role));
   const dashboardPath = getDashboardPath(user?.role);
-  const identity = user?.name || user?.email || 'CreatorOS user';
+  const identity = user?.displayName || user?.name || user?.email || 'CreatorOS user';
   const location = useLocation();
   const sectionRoutes: Record<AppSection, string> = {
     Overview: dashboardPath,
