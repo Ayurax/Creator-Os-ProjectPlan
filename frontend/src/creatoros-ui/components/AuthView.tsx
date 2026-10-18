@@ -119,7 +119,7 @@ export function AuthView({ mode: initialMode = 'login', onSubmit }: {
 
   const field = (key: string, label: string, placeholder: string, type = 'text', required = false, hint?: string): ReactNode => (
     <Field key={key} label={label} htmlFor={`cos-${key}`} required={required} hint={fieldErrors[key] || hint} error={fieldErrors[key]}>
-      <Input id={`cos-${key}`} name={key} type={type} value={values[key] || ''} onChange={(event) => update(key, event.target.value)} onInput={(event) => update(key, event.currentTarget.value)} placeholder={placeholder} required={required} autoComplete={key === 'email' ? 'email' : key === 'displayName' ? 'name' : undefined} />
+      <Input id={`cos-${key}`} name={key} type={type} defaultValue={values[key] || ''} onChange={(event) => update(key, event.target.value)} onInput={(event) => update(key, event.currentTarget.value)} placeholder={placeholder} required={required} autoComplete={key === 'email' ? 'email' : key === 'displayName' ? 'name' : undefined} />
     </Field>
   );
 
